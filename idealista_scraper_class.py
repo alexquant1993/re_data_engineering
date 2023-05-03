@@ -85,6 +85,7 @@ class IdealistaScraper:
                     if response.status_code != 200:
                         print(f"can't scrape URL: {response.url}")
                     else:
+                        await asyncio.sleep(self.get_random_sleep_interval())
                         return response
             except (httpx.RequestError, asyncio.TimeoutError):
                 if i < self.MAX_RETRIES:
@@ -187,7 +188,6 @@ class IdealistaScraper:
             if response is not None:
                 print(response.url)
                 properties.append(self.parse_property(response))
-                await asyncio.sleep(self.get_random_sleep_interval())
 
         return properties
 
@@ -369,9 +369,9 @@ class IdealistaScraper:
         return random.uniform(min_sleep, max_sleep)
 
     def exponential_backoff_with_jitter(self, retry_count):
-        return random.uniform(
-            0, min(self.MAX_BACKOFF, self.INITIAL_BACKOFF * (2**retry_count))
-        )
+        wait_time = min(self.INITIAL_BACKOFF * (2**retry_count), self.MAX_BACKOFF)
+        jitter = random.uniform(0.5, 1.5)
+        return wait_time * jitter
 
     def flatten_dict(self, d: dict, prefix: str = "") -> Dict[str, Any]:
         """

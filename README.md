@@ -105,6 +105,8 @@ Host idealista_vm
 sudo apt-get update
 sudo apt-get upgrade -y
 sudo apt-get install bzip2 libxml2-dev
+# Install the required language pack
+sudo apt-get install language-pack-es-base
 ```
 - Install Anaconda:
 ```bash
@@ -160,6 +162,8 @@ pip install -r requirements.txt
     - Check the status of the service: `sudo systemctl status prefect-agent`
     - Check that everything is working properly: `systemctl --type=service | grep prefect`
 
+> If the agent is not picking up the flow runs you can do: `sudo systemctl daemon-reload && sudo systemctl restart prefect-agent && sudo systemctl status prefect-agent`
+
 2. Repeat steps in section 3 in order to connect to Google Cloud with a service account:
     - Login to Google Cloud Platform with `gcloud auth login`
     - Export project ID value: `export PROJECT_ID="idealista-scraper-384619"`
@@ -174,4 +178,21 @@ pip install -r requirements.txt
     - Create directory to save key: `mkdir ~/.gcp`
     - Download JSON credentials: `gcloud iam service-accounts keys create ~/.gcp/prefect-agent.json --iam-account=prefect-agent@$PROJECT_ID.iam.gserviceaccount.com`
     - Login with service account: `gcloud auth activate-service-account --key-file ~/.gcp/prefect-agent.json`
-3. Login to prefect cloud: `prefect cloud login -k {YOUR_API_KEY}`
+
+# Step 8: Run the pipelines
+- Login to prefect cloud: `prefect cloud login -k {YOUR_API_KEY}`
+- Create deployment file: `prefect deployment build idealista_to_gcs_pipeline.py:idealista_to_gcs_pipeline -n madrid_sale_daily -o idealista_to_gcs_pipeline-daily.yaml`
+- Deployment file customization:
+    - Set up parameters according to your needs:
+        - testing: true
+        - province: madrid
+        - bucket_name: idealista_data_lake_idealista-scraper-384619
+        - time_period: 24
+        - type_search: sale
+        - credentials_path: ~/.gcp/prefect-agent.json
+    - Set up the schedule:
+        - cron: 0 22 * * *
+        - timezone: Europe/Madrid
+        - day_or: true
+- Apply deployment: `prefect deployment apply idealista_to_gcs_pipeline-daily.yaml`
+- Run flow: `prefect deployment run "idealista-to-gcs-pipeline/madrid_sale_daily"`

@@ -7,6 +7,7 @@ from upload_to_gcs import prepare_parquet_file, save_and_upload_to_gcs
 import asyncio
 from typing import Dict, List, Any
 from dataclasses import asdict
+import random
 
 # Prefect dependencies
 from prefect import flow, task
@@ -78,6 +79,9 @@ async def idealista_to_gcs_pipeline(
     # Generate search URL
     url = f"{base_url}/{type_search_url}/{province_url}/{time_period_url}/"
 
+    # Start scraping with a random wait time to avoid being blocked
+    # random_wait_seconds = random.uniform(0, 30) * 60
+    # await asyncio.sleep(random_wait_seconds)
     # Scrape idealista listings given a search URL
     property_urls = await scrape_search_task(url, paginate=not testing)
     property_data = await scrape_properties_task(property_urls)
@@ -116,6 +120,6 @@ if __name__ == "__main__":
             time_period,
             bucket_name,
             credentials_path,
-            testing=True,
+            testing=False,
         )
     )
