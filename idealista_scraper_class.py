@@ -83,7 +83,13 @@ class IdealistaScraper:
                 async with asyncio.Semaphore(self.CONCURRENT_REQUESTS_LIMIT):
                     response = await self.session.get(url)
                     if response.status_code != 200:
-                        print(f"can't scrape URL: {response.url}")
+                        if i < self.MAX_RETRIES:
+                            await asyncio.sleep(self.exponential_backoff_with_jitter(i))
+                        else:
+                            print(
+                                f"failed to scrape URL after {self.MAX_RETRIES} retries: {url}"
+                            )
+                            return None
                     else:
                         await asyncio.sleep(self.get_random_sleep_interval())
                         return response

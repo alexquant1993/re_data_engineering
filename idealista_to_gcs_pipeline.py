@@ -51,7 +51,7 @@ async def idealista_to_gcs_pipeline(
     time_period: str,
     bucket_name: str,
     credentials_path: str,
-    zone:str=None,
+    zone: str = None,
     testing: bool = False,
 ):
     """
@@ -81,9 +81,9 @@ async def idealista_to_gcs_pipeline(
         type_search_url = "alquiler-habitacion"
     # Get province parameter
     if zone:
-        location_url = f"{province.lower()}-provincia"
-    else:
         location_url = f"{zone.lower()}-{province.lower()}"
+    else:
+        location_url = f"{province.lower()}-provincia"
     # Generate search URL
     if time_period == "24":
         time_period_mod = "ultimas-24-horas"
@@ -141,6 +141,6 @@ if __name__ == "__main__":
             bucket_name,
             credentials_path,
             zone,
-            testing=False,
+            testing=True,
         )
     )
