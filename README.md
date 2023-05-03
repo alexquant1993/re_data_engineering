@@ -120,9 +120,18 @@ rm -f ~/anaconda.sh
     - Install git: `sudo apt-get install git`
     - Configure git: `git config --global user.name "Your Name"` and `git config --global user.email youremail@example.com`
 - Generate a SSH key: `ssh-keygen -t rsa -b 4096 -C "youremail@example.com"`
-- Add the SSH key to your GitHub account: `cat ~/.ssh/id_rsa.pub`
-
-
-
-
-
+- Add the SSH key to your GitHub account: 
+    - Copy the public SSH key: `cat ~/.ssh/id_rsa.pub`
+    - Go to GitHub settings > SSH and GPG keys > New SSH key
+    - Paste the public SSH key and save
+    - Test the SSH connection: `ssh -T git@github.com`
+- Clone the repository: `git clone git@github.com:alexquant1993/real_estate_spain.git`
+- Create a conda environment and install the neccesary packages:
+```bash
+conda create -n re-spain python=3.11
+conda init bash
+# Close and reopen your terminal
+conda activate re-spain
+cd real_estate_spain
+pip install -r requirements.txt
+```
