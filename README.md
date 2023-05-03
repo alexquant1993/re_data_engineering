@@ -135,3 +135,43 @@ conda activate re-spain
 cd real_estate_spain
 pip install -r requirements.txt
 ```
+
+## Prefect setup
+1. Run prefect as a (systemd service)[https://docs.prefect.io/orchestration/tutorial/overview.html#running-prefect-as-a-systemd-service].
+    - Create a new systemd service unit file in the /etc/systemd/system/ directory: `sudo nano /etc/systemd/system/prefect-agent.service`
+    - Copy and paste the following configuration into the service file:
+    ```bash
+    [Unit]
+    Description=Prefect Agent
+
+    [Service]
+    Type=simple
+    User=aarroyo
+    WorkingDirectory=/home/aarroyo/real_estate_spain
+    ExecStart=/home/aarroyo/anaconda3/envs/re-spain/bin/prefect agent start -q default
+    Restart=always
+
+    [Install]
+    WantedBy=multi-user.target
+    ```
+    - Reload the systemd daemon to read the new service configuration: `sudo systemctl daemon-reload`
+    - Enable the service to ensure that it starts on boot: `sudo systemctl enable prefect-agent`
+    - Start the prefect service: `sudo systemctl start prefect-agent`
+    - Check the status of the service: `sudo systemctl status prefect-agent`
+    - Check that everything is working properly: `systemctl --type=service | grep prefect`
+
+2. Repeat steps in section 3 in order to connect to Google Cloud with a service account:
+    - Login to Google Cloud Platform with `gcloud auth login`
+    - Export project ID value: `export PROJECT_ID="idealista-scraper-384619"`
+    - Set project: `gcloud config set project $PROJECT_ID`
+    - Create a service account: `gcloud iam service-accounts create prefect-agent --display-name "Prefect Agent"`
+    - Create a service account key: `gcloud iam service-accounts keys create ~/.gcp/prefect-agent.json --iam-account prefect-agent@{project_id}.iam.gserviceaccount.com`
+    - Add GCS and Bigquery roles to the service account:
+        - GCS: 
+            - `gcloud projects add-iam-policy-binding $PROJECT_ID --member serviceAccount:prefect-agent@$PROJECT_ID.iam.gserviceaccount.com --role roles/storage.admin`
+            - `gcloud projects add-iam-policy-binding $PROJECT_ID --member serviceAccount:prefect-agent@$PROJECT_ID.iam.gserviceaccount.com --role roles/storage.objectAdmin`
+        - Bigquery: `gcloud projects add-iam-policy-binding $PROJECT_ID --member serviceAccount:prefect-agent@$PROJECT_ID.iam.gserviceaccount.com --role roles/bigquery.admin`
+    - Create directory to save key: `mkdir ~/.gcp`
+    - Download JSON credentials: `gcloud iam service-accounts keys create ~/.gcp/prefect-agent.json --iam-account=prefect-agent@$PROJECT_ID.iam.gserviceaccount.com`
+    - Login with service account: `gcloud auth activate-service-account --key-file ~/.gcp/prefect-agent.json`
+3. Login to prefect cloud: `prefect cloud login -k {YOUR_API_KEY}`
