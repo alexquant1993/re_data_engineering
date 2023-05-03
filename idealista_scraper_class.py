@@ -48,19 +48,37 @@ class IdealistaScraper:
         self.MAX_BACKOFF = 32
         self.CONCURRENT_REQUESTS_LIMIT = 2
         self.NUM_RESULTS_PAGE = 30
-        self.HEADERS = {
-            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-            "accept-encoding": "gzip, deflate, br",
-            "accept-language": "es-ES,es;q=0.9,en;q=0.8",
-            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36",
-        }
+        self.HEADERS = [
+            # Chrome 112 Windows
+            {
+                "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+                "accept-encoding": "gzip, deflate, br",
+                "accept-language": "es-ES,es;q=0.9",
+                "referer": "https://www.google.com/",
+                "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36",
+            },
+            # Firefox 112 Windows
+            {
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+                "Accept-Encoding": "gzip, deflate, br",
+                "Accept-Language": "es-ES,es;q=0.8,en-US;q=0.5,en;q=0.3",
+                "Referer": "https://www.google.com/",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/112.0",
+            },
+            # Edge 112 Windows
+            {
+                "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+                "accept-encoding": "gzip, deflate, br",
+                "accept-language": "es,en-US;q=0.9,en;q=0.8",
+                "referer": "https://www.bing.com/",
+                "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36 Edg/112.0.1722.68",
+            },
+        ]
         self.session = None
         self.base_url = "https://www.idealista.com"
 
     async def __aenter__(self):
-        self.session = httpx.AsyncClient(
-            headers=self.HEADERS, follow_redirects=True, timeout=60
-        )
+        self.session = httpx.AsyncClient(follow_redirects=True, timeout=60)
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -80,9 +98,15 @@ class IdealistaScraper:
         """
         for i in range(self.MAX_RETRIES + 1):
             try:
+                headers = random.choice(self.HEADERS)
                 async with asyncio.Semaphore(self.CONCURRENT_REQUESTS_LIMIT):
-                    response = await self.session.get(url)
-                    if response.status_code != 200:
+                    response = await self.session.get(url, headers=headers)
+                    if response.status_code == 200:
+                        # Successfull request
+                        await asyncio.sleep(self.get_random_sleep_interval())
+                        return response
+                    else:
+                        # Failed request, retry
                         if i < self.MAX_RETRIES:
                             await asyncio.sleep(self.exponential_backoff_with_jitter(i))
                         else:
@@ -90,9 +114,7 @@ class IdealistaScraper:
                                 f"failed to scrape URL after {self.MAX_RETRIES} retries: {url}"
                             )
                             return None
-                    else:
-                        await asyncio.sleep(self.get_random_sleep_interval())
-                        return response
+
             except (httpx.RequestError, asyncio.TimeoutError):
                 if i < self.MAX_RETRIES:
                     await asyncio.sleep(self.exponential_backoff_with_jitter(i))
@@ -184,6 +206,8 @@ class IdealistaScraper:
         """
         properties = []
         to_scrape = [self.make_request(url) for url in urls]
+        counter = 0
+
         for response in tqdm_asyncio(
             asyncio.as_completed(to_scrape),
             total=len(to_scrape),
@@ -194,6 +218,15 @@ class IdealistaScraper:
             if response is not None:
                 print(response.url)
                 properties.append(self.parse_property(response))
+
+            # Sleep after every 100 requests to avoid being rate limited
+            counter += 1
+            if counter % 100 == 0:
+                sleep_time = self.get_random_sleep_interval() * 60
+                print(
+                    f"sleeping for {sleep_time: .2f} seconds after 100 requests to avoid rate limiting"
+                )
+                await asyncio.sleep(sleep_time)
 
         return properties
 

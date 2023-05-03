@@ -1,7 +1,11 @@
 # Import custom functions
 from idealista_scraper_class import IdealistaScraper
 from clean_scraped_data import clean_scraped_data
-from upload_to_gcs import prepare_parquet_file, save_and_upload_to_gcs
+from upload_to_gcp import (
+    prepare_parquet_file,
+    save_and_upload_to_gcs,
+    load_data_from_gcs_to_bigquery,
+)
 
 # Built-in imports
 import asyncio
@@ -45,17 +49,19 @@ async def scrape_properties_task(property_urls: List[str]) -> List[Dict[str, Any
 
 
 @flow(log_prints=True)
-async def idealista_to_gcs_pipeline(
+async def idealista_to_gcp_pipeline(
     province: str,
     type_search: str,
     time_period: str,
     bucket_name: str,
+    dataset_id: str,
+    table_id: str,
     credentials_path: str,
     zone: str = None,
     testing: bool = False,
 ):
     """
-    Scrape idealista listings given search parameters and upload to GCS
+    Scrape idealista listings given search parameters and upload to GCS and BigQuery.
     Args:
         province: The province to search in Spain
         type_search: The type of search to perform (sale, rent or share)
@@ -65,6 +71,8 @@ async def idealista_to_gcs_pipeline(
             - 'week': last week
             - 'month': last month
         bucket_name: The name of the GCS bucket to upload the data to
+        dataset_id: The name of the BigQuery dataset to upload the data to
+        table_id: The name of the BigQuery table to upload the data to
         credentials_path: The path to the GCS credentials
         zone: The zone to search in the province. These zones are defined in
         the idealista website. (default None = search in the whole province)
@@ -115,8 +123,13 @@ async def idealista_to_gcs_pipeline(
     else:
         to_path = f"production/{province}/{type_search}/"
     pa_cleaned_property_data = prepare_parquet_file(cleaned_property_data)
-    save_and_upload_to_gcs(
+    parquet_file_path = save_and_upload_to_gcs(
         pa_cleaned_property_data, bucket_name, to_path, credentials_path
+    )
+
+    # Upload to BigQuery
+    load_data_from_gcs_to_bigquery(
+        bucket_name, parquet_file_path, dataset_id, table_id, credentials_path
     )
 
     # Debugging one URL
@@ -132,13 +145,17 @@ if __name__ == "__main__":
     type_search = "sale"
     time_period = "24"
     bucket_name = "idealista_data_lake_idealista-scraper-384619"
+    dataset_id = "idealista_listings"
+    table_id = f"{type_search}-{province}"
     credentials_path = "~/.gcp/terraform.json"
     asyncio.run(
-        idealista_to_gcs_pipeline(
+        idealista_to_gcp_pipeline(
             province,
             type_search,
             time_period,
             bucket_name,
+            dataset_id,
+            table_id,
             credentials_path,
             zone,
             testing=True,
