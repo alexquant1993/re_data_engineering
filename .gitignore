@@ -1,0 +1,8 @@
+# Ignore all Terraform files
+*.terraform.lock.hcl
+*.tfstate
+*.tfstate.backup
+*.tfvars
+.terraform/
+terraform/tfplan
+__pycache__/
