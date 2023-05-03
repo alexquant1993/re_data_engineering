@@ -48,9 +48,10 @@ async def scrape_properties_task(property_urls: List[str]) -> List[Dict[str, Any
 async def idealista_to_gcs_pipeline(
     province: str,
     type_search: str,
-    time_period: int,
+    time_period: str,
     bucket_name: str,
     credentials_path: str,
+    zone:str=None,
     testing: bool = False,
 ):
     """
@@ -58,9 +59,15 @@ async def idealista_to_gcs_pipeline(
     Args:
         province: The province to search in Spain
         type_search: The type of search to perform (sale, rent or share)
-        time_period: The time period to search for (in hours). Last 24 hours, 48 hours, etc.
+        time_period: The time period to search for.
+            - '24': last 24 hours
+            - '48': last 48 hours
+            - 'week': last week
+            - 'month': last month
         bucket_name: The name of the GCS bucket to upload the data to
         credentials_path: The path to the GCS credentials
+        zone: The zone to search in the province. These zones are defined in
+        the idealista website. (default None = search in the whole province)
         testing: Whether to run the pipeline in testing mode (default False)
     """
     # Get base URL
@@ -73,11 +80,23 @@ async def idealista_to_gcs_pipeline(
     elif type_search == "share":
         type_search_url = "alquiler-habitacion"
     # Get province parameter
-    province_url = f"{province.lower()}-provincia"
+    if zone:
+        location_url = f"{province.lower()}-provincia"
+    else:
+        location_url = f"{zone.lower()}-{province.lower()}"
     # Generate search URL
-    time_period_url = f"con-publicado_ultimas-{time_period}-horas"
+    if time_period == "24":
+        time_period_mod = "ultimas-24-horas"
+    elif time_period == "48":
+        time_period_mod = "ultimas-48-horas"
+    elif time_period == "week":
+        time_period_mod = "ultima-semana"
+    elif time_period == "month":
+        time_period_mod = "ultimo-mes"
+    time_period_url = f"con-publicado_{time_period_mod}"
     # Generate search URL
-    url = f"{base_url}/{type_search_url}/{province_url}/{time_period_url}/"
+    url = f"{base_url}/{type_search_url}/{location_url}/{time_period_url}/"
+    print(f"Scraping {url}")
 
     # Start scraping with a random wait time to avoid being blocked
     # random_wait_seconds = random.uniform(0, 30) * 60
@@ -108,9 +127,10 @@ async def idealista_to_gcs_pipeline(
 
 
 if __name__ == "__main__":
+    zone = "madrid"
     province = "madrid"
     type_search = "sale"
-    time_period = 24
+    time_period = "24"
     bucket_name = "idealista_data_lake_idealista-scraper-384619"
     credentials_path = "~/.gcp/terraform.json"
     asyncio.run(
@@ -120,6 +140,7 @@ if __name__ == "__main__":
             time_period,
             bucket_name,
             credentials_path,
+            zone,
             testing=False,
         )
     )
