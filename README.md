@@ -76,6 +76,7 @@ on windows_amd64
 - Initialize Terraform: `terraform init`
 - Terraform validate: `terraform validate`
 - Terraform plan: `terraform plan -var "credentials=~/.gcp/terraform.json" -var "vm_ssh_user=aarroyo" -var "vm_ssh_pub_key=~/.ssh/idealista_vm.pub" -out=tfplan`
+    - Enter DigitalOcean token - DO is used given that offers cheaper VMs than GCP. The token can be obtained from the DO dashboard.
     - Enter GCP credentials JSON file path: `~/.gcp/terraform.json`
     - Enter path to the SSH public key for VM: `~/.ssh/idealista_vm.pub`
         - Previously generate a SSH key pair: `ssh-keygen`
@@ -92,11 +93,14 @@ on windows_amd64
 ```bash
 Host idealista_vm
 	Hostname {vm_ip_address}
-	User {username}
+	User root
+    Port 22
 	IdentityFile {~/.ssh/private_ssh_key}
 ```
 - Connect to VM instance using the Remote SSH extension in VSCode. Select remote and then connect in new window.
 - This will open a new VSCode window with the VM instance connected.
+- Create a new user in the VM instance: `sudo adduser aarroyo && sudo usermod -aG sudo aarroyo`
+- Change user to `aarroyo`: `sudo su - aarroyo`
 
 # Step 7: Install packages and software in VM instance
 - Check CPU and disk space information: `lscpu` and `df -h`
@@ -165,6 +169,7 @@ pip install -r requirements.txt
 > If the agent is not picking up the flow runs you can do: `sudo systemctl daemon-reload && sudo systemctl restart prefect-agent && sudo systemctl status prefect-agent`
 
 2. Repeat steps in section 3 in order to connect to Google Cloud with a service account:
+    - In a Digital Ocean Droplet, you have to install the Google Cloud SDK: `sudo snap install google-cloud-sdk --classic`
     - Login to Google Cloud Platform with `gcloud auth login`
     - Export project ID value: `export PROJECT_ID="idealista-scraper-384619"`
     - Set project: `gcloud config set project $PROJECT_ID`
@@ -179,7 +184,7 @@ pip install -r requirements.txt
 
 # Step 8: Run the pipelines
 - Login to prefect cloud: `prefect cloud login -k {YOUR_API_KEY}`
-- Create deployment file: `prefect deployment build idealista_to_gcs_pipeline.py:idealista_to_gcs_pipeline -n madrid_sale_daily -o idealista_to_gcs_pipeline-daily.yaml`
+- Create deployment file: `prefect deployment build idealista_pipeline.py:idealista_to_gcp_pipeline -n madrid_sale_daily -o idealista-pipeline-daily.yaml`
 - Deployment file customization:
     - Set up parameters according to your needs:
         - testing: true

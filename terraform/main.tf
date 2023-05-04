@@ -5,6 +5,9 @@ terraform {
     google = {
       source  = "hashicorp/google"
     }
+    digitalocean = {
+      source = "digitalocean/digitalocean"
+    }
   }
 }
 
@@ -14,32 +17,25 @@ provider "google" {
   credentials = file(var.credentials)
 }
 
+provider "digitalocean" {
+  token = var.do_token
+}
+
 # Virtual machine
-resource "google_compute_instance" "idealista_vm" {
-  name         = "idealista-pipeline-vm"
-  machine_type = var.machine_type
-  zone         = var.zone
+resource "digitalocean_droplet" "idealista_vm" {
+  name   = "idealista-pipeline-vm"
+  size   = var.do_machine_type
+  image  = var.do_vm_image
+  region = var.do_region
 
-  boot_disk {
-    initialize_params {
-      size = var.boot_disk_size
-      image = var.vm_image
-    }
-  }
+  ssh_keys = [
+    digitalocean_ssh_key.idealista_vm_ssh_key.id
+  ]
+}
 
-  network_interface {
-    network = "default"
-    subnetwork = "default"
-    access_config {
-      // Ephemeral IP
-    }
-  }
-
-  metadata = {
-    ssh-keys = "${var.vm_ssh_user}:${file(var.vm_ssh_pub_key)}"
-  }
-
-  tags = ["terraform", "ubuntu"]
+resource "digitalocean_ssh_key" "idealista_vm_ssh_key" {
+  name       = "idealista_vm_ssh_key"
+  public_key = file(var.vm_ssh_pub_key)
 }
 
 # Data Lake Bucket
