@@ -218,7 +218,7 @@ class IdealistaScraper:
             if response is not None:
                 print(response.url)
                 properties.append(self.parse_property(response))
-                await asyncio.sleep(self.get_random_sleep_interval())
+            await asyncio.sleep(self.get_random_sleep_interval())
                 
             # Sleep after every 100 requests to avoid being rate limited
             counter += 1
