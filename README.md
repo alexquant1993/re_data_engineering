@@ -88,7 +88,7 @@ on windows_amd64
 
 # Step 6: Connect to VM instance
 - Install Remote SSH extension in VSCode
-- Check the VM instance IP address: `gcloud compute instances list`
+- Check the VM instance IP address in the DO dashboard
 - Edit the config file in `~/.ssh/config` to add the VM instance:
 ```bash
 Host idealista_vm

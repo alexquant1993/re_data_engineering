@@ -43,43 +43,29 @@ class IdealistaScraper:
     """
 
     def __init__(self):
-        self.MAX_RETRIES = 3
-        self.INITIAL_BACKOFF = 1
-        self.MAX_BACKOFF = 32
+        # Parameters for the scraper
         self.CONCURRENT_REQUESTS_LIMIT = 1
         self.NUM_RESULTS_PAGE = 30
         self.SEMAPHORE = asyncio.Semaphore(self.CONCURRENT_REQUESTS_LIMIT)
-        self.HEADERS = [
-            # Chrome 112 Windows
-            {
+        self.HEADERS = {
                 "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
                 "accept-encoding": "gzip, deflate, br",
                 "accept-language": "es-ES,es;q=0.9",
-                "referer": "https://www.google.com/",
                 "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36",
-            },
-            # Firefox 112 Windows
-            {
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-                "Accept-Encoding": "gzip, deflate, br",
-                "Accept-Language": "es-ES,es;q=0.8,en-US;q=0.5,en;q=0.3",
-                "Referer": "https://www.google.com/",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/112.0",
-            },
-            # Edge 112 Windows
-            {
-                "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-                "accept-encoding": "gzip, deflate, br",
-                "accept-language": "es,en-US;q=0.9,en;q=0.8",
-                "referer": "https://www.bing.com/",
-                "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36 Edg/112.0.1722.68",
             }
-        ]
+        # Parameters for the exponential backoff algorithm
+        self.MAX_RETRIES = 3
+        self.INITIAL_BACKOFF = 2
+        self.MAX_BACKOFF = 32
+        # Parameters for the random sleep interval
+        self.MIN_SLEEP_INTERVAL = 1
+        self.MAX_SLEEP_INTERVAL = 5
+        # Default parameters for the search
         self.session = None
         self.base_url = "https://www.idealista.com"
 
     async def __aenter__(self):
-        self.session = httpx.AsyncClient(follow_redirects=True, timeout=60)
+        self.session = httpx.AsyncClient(headers=self.HEADERS, follow_redirects=True, timeout=60)
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -97,11 +83,10 @@ class IdealistaScraper:
         Returns:
         The response object from the request, or None if the request failed
         """
-        async with self.semaphore:
+        async with self.SEMAPHORE:
             for i in range(self.MAX_RETRIES + 1):
                 try:
-                    headers = random.choice(self.HEADERS)
-                    response = await self.session.get(url, headers=headers)
+                    response = await self.session.get(url, headers=self.HEADERS)
                     if response.status_code == 200:
                         # Successful request
                         await asyncio.sleep(self.get_random_sleep_interval())
@@ -223,7 +208,7 @@ class IdealistaScraper:
             # Sleep after every 50 requests to avoid being rate limited
             counter += 1
             if counter % 50 == 0:
-                sleep_time = self.get_random_sleep_interval(60, 120)
+                sleep_time = self.get_random_sleep_interval() * 2
                 print(
                     f"sleeping for {sleep_time: .2f} seconds after 50 requests to avoid rate limiting"
                 )
@@ -395,18 +380,13 @@ class IdealistaScraper:
         ]
         return plan_urls
 
-    def get_random_sleep_interval(self, min_sleep=10, max_sleep=30):
+    def get_random_sleep_interval(self):
         """
         Generate a random sleep interval to add between requests
-
-        Args:
-            min_sleep: The minimum sleep time in seconds (default 10)
-            max_sleep: The maximum sleep time in seconds (default 30)
-
         Returns:
             A random sleep interval in seconds
         """
-        return random.uniform(min_sleep, max_sleep)
+        return random.uniform(self.MIN_SLEEP_INTERVAL, self.MAX_SLEEP_INTERVAL)
 
     def exponential_backoff_with_jitter(self, retry_count):
         wait_time = min(self.INITIAL_BACKOFF * (2**retry_count), self.MAX_BACKOFF)
