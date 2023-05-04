@@ -43,11 +43,12 @@ class IdealistaScraper:
     """
 
     def __init__(self):
-        self.MAX_RETRIES = 5
+        self.MAX_RETRIES = 3
         self.INITIAL_BACKOFF = 1
         self.MAX_BACKOFF = 32
-        self.CONCURRENT_REQUESTS_LIMIT = 2
+        self.CONCURRENT_REQUESTS_LIMIT = 1
         self.NUM_RESULTS_PAGE = 30
+        self.SEMAPHORE = asyncio.Semaphore(self.CONCURRENT_REQUESTS_LIMIT)
         self.HEADERS = [
             # Chrome 112 Windows
             {
@@ -72,7 +73,7 @@ class IdealistaScraper:
                 "accept-language": "es,en-US;q=0.9,en;q=0.8",
                 "referer": "https://www.bing.com/",
                 "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36 Edg/112.0.1722.68",
-            },
+            }
         ]
         self.session = None
         self.base_url = "https://www.idealista.com"
@@ -96,13 +97,13 @@ class IdealistaScraper:
         Returns:
         The response object from the request, or None if the request failed
         """
-        for i in range(self.MAX_RETRIES + 1):
-            try:
-                headers = random.choice(self.HEADERS)
-                async with asyncio.Semaphore(self.CONCURRENT_REQUESTS_LIMIT):
+        async with self.semaphore:
+            for i in range(self.MAX_RETRIES + 1):
+                try:
+                    headers = random.choice(self.HEADERS)
                     response = await self.session.get(url, headers=headers)
                     if response.status_code == 200:
-                        # Successfull request
+                        # Successful request
                         await asyncio.sleep(self.get_random_sleep_interval())
                         return response
                     else:
@@ -111,18 +112,18 @@ class IdealistaScraper:
                             await asyncio.sleep(self.exponential_backoff_with_jitter(i))
                         else:
                             print(
-                                f"failed to scrape URL after {self.MAX_RETRIES} retries: {url}"
+                                f"Failed to scrape URL after {self.MAX_RETRIES} retries: {url}"
                             )
                             return None
 
-            except (httpx.RequestError, asyncio.TimeoutError):
-                if i < self.MAX_RETRIES:
-                    await asyncio.sleep(self.exponential_backoff_with_jitter(i))
-                else:
-                    print(
-                        f"failed to scrape URL after {self.MAX_RETRIES} retries: {url}"
-                    )
-                    return None
+                except (httpx.RequestError, asyncio.TimeoutError):
+                    if i < self.MAX_RETRIES:
+                        await asyncio.sleep(self.exponential_backoff_with_jitter(i))
+                    else:
+                        print(
+                            f"Failed to scrape URL after {self.MAX_RETRIES} retries: {url}"
+                        )
+                        return None
 
     def parse_property(self, response: httpx.Response) -> PropertyResult:
         """
@@ -218,14 +219,13 @@ class IdealistaScraper:
             if response is not None:
                 print(response.url)
                 properties.append(self.parse_property(response))
-            await asyncio.sleep(self.get_random_sleep_interval())
                 
-            # Sleep after every 100 requests to avoid being rate limited
+            # Sleep after every 50 requests to avoid being rate limited
             counter += 1
-            if counter % 100 == 0:
+            if counter % 50 == 0:
                 sleep_time = self.get_random_sleep_interval(60, 120)
                 print(
-                    f"sleeping for {sleep_time: .2f} seconds after 100 requests to avoid rate limiting"
+                    f"sleeping for {sleep_time: .2f} seconds after 50 requests to avoid rate limiting"
                 )
                 await asyncio.sleep(sleep_time)
 
@@ -268,7 +268,6 @@ class IdealistaScraper:
             ncols=100,
         ):
             property_urls.extend(self.parse_search(await response))
-            await asyncio.sleep(self.get_random_sleep_interval())
 
         return property_urls
 
@@ -396,13 +395,13 @@ class IdealistaScraper:
         ]
         return plan_urls
 
-    def get_random_sleep_interval(self, min_sleep=1, max_sleep=5):
+    def get_random_sleep_interval(self, min_sleep=10, max_sleep=30):
         """
         Generate a random sleep interval to add between requests
 
         Args:
-            min_sleep: The minimum sleep time in seconds (default 1)
-            max_sleep: The maximum sleep time in seconds (default 5)
+            min_sleep: The minimum sleep time in seconds (default 10)
+            max_sleep: The maximum sleep time in seconds (default 30)
 
         Returns:
             A random sleep interval in seconds
