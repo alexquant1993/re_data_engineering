@@ -218,11 +218,12 @@ class IdealistaScraper:
             if response is not None:
                 print(response.url)
                 properties.append(self.parse_property(response))
-
+                await asyncio.sleep(self.get_random_sleep_interval())
+                
             # Sleep after every 100 requests to avoid being rate limited
             counter += 1
             if counter % 100 == 0:
-                sleep_time = self.get_random_sleep_interval() * 60
+                sleep_time = self.get_random_sleep_interval(60, 120)
                 print(
                     f"sleeping for {sleep_time: .2f} seconds after 100 requests to avoid rate limiting"
                 )
@@ -267,6 +268,7 @@ class IdealistaScraper:
             ncols=100,
         ):
             property_urls.extend(self.parse_search(await response))
+            await asyncio.sleep(self.get_random_sleep_interval())
 
         return property_urls
 

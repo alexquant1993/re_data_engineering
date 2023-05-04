@@ -55,7 +55,6 @@ async def idealista_to_gcp_pipeline(
     time_period: str,
     bucket_name: str,
     dataset_id: str,
-    table_id: str,
     credentials_path: str,
     zone: str = None,
     testing: bool = False,
@@ -72,7 +71,6 @@ async def idealista_to_gcp_pipeline(
             - 'month': last month
         bucket_name: The name of the GCS bucket to upload the data to
         dataset_id: The name of the BigQuery dataset to upload the data to
-        table_id: The name of the BigQuery table to upload the data to
         credentials_path: The path to the GCS credentials
         zone: The zone to search in the province. These zones are defined in
         the idealista website. (default None = search in the whole province)
@@ -127,6 +125,11 @@ async def idealista_to_gcp_pipeline(
         pa_cleaned_property_data, bucket_name, to_path, credentials_path
     )
 
+    # Get table id
+    if testing:
+        table_id = f"{type_search}-{province}-testing"
+    else:
+        table_id = f"{type_search}-{province}-production"
     # Upload to BigQuery
     load_data_from_gcs_to_bigquery(
         bucket_name, parquet_file_path, dataset_id, table_id, credentials_path
@@ -146,7 +149,6 @@ if __name__ == "__main__":
     time_period = "24"
     bucket_name = "idealista_data_lake_idealista-scraper-384619"
     dataset_id = "idealista_listings"
-    table_id = f"{type_search}-{province}"
     credentials_path = "~/.gcp/terraform.json"
     asyncio.run(
         idealista_to_gcp_pipeline(
@@ -155,7 +157,6 @@ if __name__ == "__main__":
             time_period,
             bucket_name,
             dataset_id,
-            table_id,
             credentials_path,
             zone,
             testing=True,
