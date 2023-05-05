@@ -10,7 +10,6 @@ from typing import Dict, List, Any, Optional
 from collections import defaultdict
 from urllib.parse import urljoin
 from dataclasses import dataclass
-import logging
 from http import HTTPStatus
 
 # Import third-party libraries
@@ -46,17 +45,6 @@ class IdealistaScraper:
     """
 
     def __init__(self):
-        # Configure the logging module
-        logging.basicConfig(
-            level=logging.INFO,
-            format="%(asctime)s - %(levelname)s - %(message)s",
-            handlers=[
-                logging.FileHandler("scraper.log", mode="w"),
-                logging.StreamHandler(),
-            ],
-        )
-        self.logger = logging.getLogger(__name__)
-
         # Parameters for the scraper
         self.CONCURRENT_REQUESTS_LIMIT = 1
         self.NUM_RESULTS_PAGE = 30
@@ -112,8 +100,8 @@ class IdealistaScraper:
         self.MAX_SLEEP_INTERVAL = 15
 
         # Token bucket algorithm parameters
-        self.token_bucket = TokenBucket(tokens=1, fill_rate=1 / 12)
-        
+        self.token_bucket = TokenBucket(tokens=1, fill_rate=1 / 5)
+
         # Default parameters for the search
         self.session = None
         self.base_url = "https://www.idealista.com"
@@ -164,7 +152,7 @@ class IdealistaScraper:
                     if response.status_code == HTTPStatus.OK:
                         # Successful request
                         self.last_successful_url = url
-                        self.logger.info(f"Successful request: {url}")
+                        print(f"Successful request: {url}")
                         return response
                     elif response.status_code in (
                         HTTPStatus.TOO_MANY_REQUESTS,
@@ -172,9 +160,9 @@ class IdealistaScraper:
                     ):
                         # Too Many Requests or Service Unavailable
                         retry_after = response.headers.get("Retry-After")
-                        self.logger.info(response.headers)
+                        print(response.headers)
                         if retry_after:
-                            self.logger.info(
+                            print(
                                 f"Rate limit reached, retry in {retry_after} seconds. URL: {url}"
                             )
                         # if retry_after:
@@ -183,24 +171,24 @@ class IdealistaScraper:
                         #     )
                         # else:
                         #     sleep_duration = self.exponential_backoff_with_jitter(i)
-                        # self.logger.warning(
+                        # print(
                         #     f"HTTP {response.status_code} - Retrying in {sleep_duration} seconds: {url}"
                         # )
                         # await asyncio.sleep(sleep_duration)
-                        self.logger.error(
-                            f"Encountered rate limit or service unavailable, stopping the scraper. URL: {url}"
+                        print(
+                            f"HTTP {response.status_code}. Encountered rate limit or service unavailable, stopping the scraper. URL: {url}"
                         )
                         raise RateLimitException(f"Rate limit reached. URL: {url}")
                     else:
                         # Failed request, retry
                         if i < self.MAX_RETRIES:
                             sleep_duration = self.exponential_backoff_with_jitter(i)
-                            self.logger.warning(
+                            print(
                                 f"HTTP {response.status_code} - Retrying in {sleep_duration} seconds: {url}"
                             )
                             await asyncio.sleep(sleep_duration)
                         else:
-                            self.logger.error(
+                            print(
                                 f"Failed to scrape URL after {self.MAX_RETRIES} retries: {url}"
                             )
                             return None
@@ -208,12 +196,12 @@ class IdealistaScraper:
                 except (httpx.RequestError, asyncio.TimeoutError):
                     if i < self.MAX_RETRIES:
                         sleep_duration = self.exponential_backoff_with_jitter(i)
-                        self.logger.warning(
+                        print(
                             f"Request error - Retrying in {sleep_duration} seconds: {url}"
                         )
                         await asyncio.sleep(sleep_duration)
                     else:
-                        self.logger.error(
+                        print(
                             f"Failed to scrape URL after {self.MAX_RETRIES} retries: {url}"
                         )
                         return None
@@ -312,20 +300,19 @@ class IdealistaScraper:
             try:
                 response = await response
                 if response is not None:
-                    self.logger.info(response.url)
                     properties.append(self.parse_property(response))
 
                 # Sleep after every 50 requests to avoid being rate limited
                 counter += 1
                 if counter % 50 == 0:
                     sleep_time = self.get_random_sleep_interval() * 2
-                    self.logger.info(
+                    print(
                         f"sleeping for {sleep_time: .2f} seconds after 50 requests to avoid rate limiting"
                     )
                     await asyncio.sleep(sleep_time)
             except RateLimitException as e:
-                self.logger.warning(e)
-                self.logger.warning("Stopping the scraping process.")
+                print(e)
+                print("Stopping the scraping process.")
                 break
 
         return properties
@@ -350,12 +337,12 @@ class IdealistaScraper:
 
         total_pages = self.get_total_pages(first_page)
         if total_pages > self.MAX_PAGES:
-            self.logger.info(
+            print(
                 f"search contains more than max page limit ({total_pages}/{self.MAX_PAGES})"
             )
             total_pages = self.MAX_PAGES
 
-        self.logger.info(f"scraping {total_pages} pages of search results concurrently")
+        print(f"scraping {total_pages} pages of search results concurrently")
 
         to_scrape = [
             self.make_request(str(first_page.url) + f"pagina-{page}.htm")
@@ -419,7 +406,7 @@ class IdealistaScraper:
             A dictionary of property features, where each key is a feature category and each value is a list of features in that category
         """
         feature_dict = {}
-        for feature_block in soup.select(".details-property-h3"):
+        for feature_block in soup.select('[class^="details-property-h"]'):
             feature_name = feature_block.text.strip()
             if feature_name != "Certificado energético":
                 features = [
