@@ -62,6 +62,7 @@ class IdealistaScraper:
         self.NUM_RESULTS_PAGE = 30
         self.MAX_PAGES = 60
         self.SEMAPHORE = asyncio.Semaphore(self.CONCURRENT_REQUESTS_LIMIT)
+
         # Rotating headers to avoid being blocked
         self.HEADERS = [
             # Chrome 112 Windows
@@ -100,15 +101,19 @@ class IdealistaScraper:
         self.requests_to_rotate = random.randint(
             self.MIN_ROTATE_INTERVAL, self.MAX_ROTATE_INTERVAL
         )
+
         # Parameters for the exponential backoff algorithm
         self.MAX_RETRIES = 3
         self.INITIAL_BACKOFF = 2
         self.MAX_BACKOFF = 32
+
         # Parameters for the random sleep interval
         self.MIN_SLEEP_INTERVAL = 10
         self.MAX_SLEEP_INTERVAL = 15
+
         # Token bucket algorithm parameters
         self.token_bucket = TokenBucket(tokens=1, fill_rate=1 / 12)
+        
         # Default parameters for the search
         self.session = None
         self.base_url = "https://www.idealista.com"
@@ -167,6 +172,7 @@ class IdealistaScraper:
                     ):
                         # Too Many Requests or Service Unavailable
                         retry_after = response.headers.get("Retry-After")
+                        self.logger.info(response.headers)
                         if retry_after:
                             self.logger.info(
                                 f"Rate limit reached, retry in {retry_after} seconds. URL: {url}"
