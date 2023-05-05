@@ -76,12 +76,12 @@ class IdealistaScraper:
             },
             # Firefox 112 Windows
             {
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-                "Accept-Encoding": "gzip, deflate, br",
-                "Accept-Language": "es-ES,es;q=0.8,en-US;q=0.5,en;q=0.3",
-                "Referer": "https://www.google.es/",
-                "Upgrade-Insecure-Requests": "1",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/112.0",
+                "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+                "accept-encoding": "gzip, deflate, br",
+                "accept-language": "es-ES,es;q=0.8,en-US;q=0.5,en;q=0.3",
+                "referer": "https://www.google.es/",
+                "upgrade-insecure-requests": "1",
+                "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/112.0",
             },
             # Edge 112 Windows
             {
@@ -144,22 +144,18 @@ class IdealistaScraper:
                         await asyncio.sleep(random.uniform(0.5, 1.5))
                     # Rotate the headers if necessary
                     if self.requests_since_last_rotation >= self.requests_to_rotate:
-                        headers = random.choice(self.HEADERS)
+                        self.session.headers = random.choice(self.HEADERS)
                         self.requests_since_last_rotation = 0
                         self.requests_to_rotate = random.randint(
                             self.MIN_ROTATE_INTERVAL, self.MAX_ROTATE_INTERVAL
                         )
                     else:
-                        headers = self.session.headers
                         self.requests_since_last_rotation += 1
                     # Update the referer header with the last successful URL if available
                     if self.last_successful_url:
-                        if "referer" in self.session.headers.keys():
-                            headers["referer"] = self.last_successful_url
-                        else:
-                            headers["Referer"] = self.last_successful_url
+                        self.session.headers["referer"] = self.last_successful_url
                     # Make the request
-                    response = await self.session.get(url, headers=headers)
+                    response = await self.session.get(url)
                     if response.status_code == HTTPStatus.OK:
                         # Successful request
                         self.last_successful_url = url
