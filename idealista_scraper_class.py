@@ -10,6 +10,8 @@ from typing import Dict, List, Any, Optional
 from collections import defaultdict
 from urllib.parse import urljoin
 from dataclasses import dataclass
+import logging
+from http import HTTPStatus
 
 # Import third-party libraries
 import httpx
@@ -44,19 +46,32 @@ class IdealistaScraper:
     """
 
     def __init__(self):
+        # Configure the logging module
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s - %(levelname)s - %(message)s",
+            handlers=[
+                logging.FileHandler("scraper.log", mode="w"),
+                logging.StreamHandler(),
+            ],
+        )
+        self.logger = logging.getLogger(__name__)
+
         # Parameters for the scraper
         self.CONCURRENT_REQUESTS_LIMIT = 1
         self.NUM_RESULTS_PAGE = 30
+        self.MAX_PAGES = 60
         self.SEMAPHORE = asyncio.Semaphore(self.CONCURRENT_REQUESTS_LIMIT)
+        # Rotating headers to avoid being blocked
         self.HEADERS = [
             # Chrome 112 Windows
             {
                 "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
                 "accept-encoding": "gzip, deflate, br",
                 "accept-language": "es-ES,es;q=0.9",
-                'cache-control': 'max-age=0',
-                'referer': 'https://www.google.es/',
-                'upgrade-insecure-requests': '1',
+                "cache-control": "max-age=0",
+                "referer": "https://www.google.es/",
+                "upgrade-insecure-requests": "1",
                 "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36",
             },
             # Firefox 112 Windows
@@ -64,7 +79,7 @@ class IdealistaScraper:
                 "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
                 "Accept-Encoding": "gzip, deflate, br",
                 "Accept-Language": "es-ES,es;q=0.8,en-US;q=0.5,en;q=0.3",
-                'Referer': 'https://www.google.es/',
+                "Referer": "https://www.google.es/",
                 "Upgrade-Insecure-Requests": "1",
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/112.0",
             },
@@ -73,27 +88,37 @@ class IdealistaScraper:
                 "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
                 "accept-encoding": "gzip, deflate, br",
                 "accept-language": "es,en-US;q=0.9,en;q=0.8",
-                'cache-control': 'max-age=0',
-                'referer': 'https://www.google.es/',
-                'upgrade-insecure-requests': '1',
+                "cache-control": "max-age=0",
+                "referer": "https://www.google.es/",
+                "upgrade-insecure-requests": "1",
                 "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36 Edg/112.0.1722.68",
-            }
+            },
         ]
+        self.MIN_ROTATE_INTERVAL = 5
+        self.MAX_ROTATE_INTERVAL = 20
+        self.requests_since_last_rotation = 0
+        self.requests_to_rotate = random.randint(
+            self.MIN_ROTATE_INTERVAL, self.MAX_ROTATE_INTERVAL
+        )
         # Parameters for the exponential backoff algorithm
         self.MAX_RETRIES = 3
         self.INITIAL_BACKOFF = 2
         self.MAX_BACKOFF = 32
         # Parameters for the random sleep interval
-        self.MIN_SLEEP_INTERVAL = 5
+        self.MIN_SLEEP_INTERVAL = 10
         self.MAX_SLEEP_INTERVAL = 15
+        # Token bucket algorithm parameters
+        self.token_bucket = TokenBucket(tokens=1, fill_rate=1 / 12)
         # Default parameters for the search
         self.session = None
         self.base_url = "https://www.idealista.com"
         self.last_successful_url = None
 
-
     async def __aenter__(self):
-        self.session = httpx.AsyncClient(follow_redirects=True, timeout=60)
+        headers = random.choice(self.HEADERS)
+        self.session = httpx.AsyncClient(
+            headers=headers, follow_redirects=True, timeout=60
+        )
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -114,37 +139,79 @@ class IdealistaScraper:
         async with self.SEMAPHORE:
             for i in range(self.MAX_RETRIES + 1):
                 try:
-                    # Rotate the headers randomly between 5 to 20 requests
-                    if i == 0 or i % random.randint(5, 20) == 0:
+                    # Wait for a token to be available
+                    while not self.token_bucket.consume(1):
+                        await asyncio.sleep(random.uniform(0.5, 1.5))
+                    # Rotate the headers if necessary
+                    if self.requests_since_last_rotation >= self.requests_to_rotate:
                         headers = random.choice(self.HEADERS)
+                        self.requests_since_last_rotation = 0
+                        self.requests_to_rotate = random.randint(
+                            self.MIN_ROTATE_INTERVAL, self.MAX_ROTATE_INTERVAL
+                        )
+                    else:
+                        headers = self.session.headers
+                        self.requests_since_last_rotation += 1
                     # Update the referer header with the last successful URL if available
                     if self.last_successful_url:
-                        if 'referer' in self.session.headers.keys():
-                            self.session.headers['referer'] = self.last_successful_url
+                        if "referer" in self.session.headers.keys():
+                            headers["referer"] = self.last_successful_url
                         else:
-                            self.session.headers['Referer'] = self.last_successful_url
+                            headers["Referer"] = self.last_successful_url
                     # Make the request
                     response = await self.session.get(url, headers=headers)
-                    if response.status_code == 200:
+                    if response.status_code == HTTPStatus.OK:
                         # Successful request
                         self.last_successful_url = url
-                        await asyncio.sleep(self.get_random_sleep_interval())
+                        self.logger.info(f"Successful request: {url}")
                         return response
+                    elif response.status_code in (
+                        HTTPStatus.TOO_MANY_REQUESTS,
+                        HTTPStatus.SERVICE_UNAVAILABLE,
+                    ):
+                        # Too Many Requests or Service Unavailable
+                        retry_after = response.headers.get("Retry-After")
+                        if retry_after:
+                            self.logger.info(
+                                f"Rate limit reached, retry in {retry_after} seconds. URL: {url}"
+                            )
+                        # if retry_after:
+                        #     sleep_duration = max(
+                        #         int(retry_after), self.get_random_sleep_interval()
+                        #     )
+                        # else:
+                        #     sleep_duration = self.exponential_backoff_with_jitter(i)
+                        # self.logger.warning(
+                        #     f"HTTP {response.status_code} - Retrying in {sleep_duration} seconds: {url}"
+                        # )
+                        # await asyncio.sleep(sleep_duration)
+                        self.logger.error(
+                            f"Encountered rate limit or service unavailable, stopping the scraper. URL: {url}"
+                        )
+                        raise RateLimitException(f"Rate limit reached. URL: {url}")
                     else:
                         # Failed request, retry
                         if i < self.MAX_RETRIES:
-                            await asyncio.sleep(self.exponential_backoff_with_jitter(i))
+                            sleep_duration = self.exponential_backoff_with_jitter(i)
+                            self.logger.warning(
+                                f"HTTP {response.status_code} - Retrying in {sleep_duration} seconds: {url}"
+                            )
+                            await asyncio.sleep(sleep_duration)
                         else:
-                            print(
+                            self.logger.error(
                                 f"Failed to scrape URL after {self.MAX_RETRIES} retries: {url}"
                             )
                             return None
 
                 except (httpx.RequestError, asyncio.TimeoutError):
                     if i < self.MAX_RETRIES:
-                        await asyncio.sleep(self.exponential_backoff_with_jitter(i))
+                        sleep_duration = self.exponential_backoff_with_jitter(i)
+                        self.logger.warning(
+                            f"Request error - Retrying in {sleep_duration} seconds: {url}"
+                        )
+                        await asyncio.sleep(sleep_duration)
                     else:
-                        print(
+                        self.logger.error(
                             f"Failed to scrape URL after {self.MAX_RETRIES} retries: {url}"
                         )
                         return None
@@ -229,7 +296,7 @@ class IdealistaScraper:
         Returns:
             A list of PropertyResult objects representing the scraped data
         """
-        urls = random.shuffle(urls)
+        random.shuffle(urls)
         properties = []
         to_scrape = [self.make_request(url) for url in urls]
         counter = 0
@@ -240,19 +307,24 @@ class IdealistaScraper:
             desc="Scraping Properties",
             ncols=100,
         ):
-            response = await response
-            if response is not None:
-                print(response.url)
-                properties.append(self.parse_property(response))
-                
-            # Sleep after every 50 requests to avoid being rate limited
-            counter += 1
-            if counter % 50 == 0:
-                sleep_time = self.get_random_sleep_interval() * 2
-                print(
-                    f"sleeping for {sleep_time: .2f} seconds after 50 requests to avoid rate limiting"
-                )
-                await asyncio.sleep(sleep_time)
+            try:
+                response = await response
+                if response is not None:
+                    self.logger.info(response.url)
+                    properties.append(self.parse_property(response))
+
+                # Sleep after every 50 requests to avoid being rate limited
+                counter += 1
+                if counter % 50 == 0:
+                    sleep_time = self.get_random_sleep_interval() * 2
+                    self.logger.info(
+                        f"sleeping for {sleep_time: .2f} seconds after 50 requests to avoid rate limiting"
+                    )
+                    await asyncio.sleep(sleep_time)
+            except RateLimitException as e:
+                self.logger.warning(e)
+                self.logger.warning("Stopping the scraping process.")
+                break
 
         return properties
 
@@ -275,11 +347,13 @@ class IdealistaScraper:
             return property_urls
 
         total_pages = self.get_total_pages(first_page)
-        if total_pages > 60:
-            print(f"search contains more than max page limit ({total_pages}/60)")
-            total_pages = 60
+        if total_pages > self.MAX_PAGES:
+            self.logger.info(
+                f"search contains more than max page limit ({total_pages}/{self.MAX_PAGES})"
+            )
+            total_pages = self.MAX_PAGES
 
-        print(f"scraping {total_pages} pages of search results concurrently")
+        self.logger.info(f"scraping {total_pages} pages of search results concurrently")
 
         to_scrape = [
             self.make_request(str(first_page.url) + f"pagina-{page}.htm")
@@ -454,20 +528,28 @@ class IdealistaScraper:
 
 
 class TokenBucket:
-    def __init__(self, capacity, fill_rate):
-        self.capacity = capacity
-        self.fill_rate = fill_rate
-        self.tokens = capacity
-        self.timestamp = time.time()
+    def __init__(self, tokens, fill_rate):
+        self.capacity = float(tokens)
+        self.tokens = float(tokens)
+        self.fill_rate = float(fill_rate)
+        self.timestamp = time.monotonic()
 
-    def consume(self):
-        now = time.time()
-        elapsed = now - self.timestamp
-        self.tokens += elapsed * self.fill_rate
+    def get_tokens(self):
+        now = time.monotonic()
+        delta = now - self.timestamp
         self.timestamp = now
+        self.tokens = min(self.capacity, self.tokens + self.fill_rate * delta)
+        return self.tokens
 
-        if self.tokens >= 1:
-            self.tokens -= 1
+    def consume(self, tokens):
+        if tokens <= self.get_tokens():
+            self.tokens -= tokens
             return True
-        else:
-            return False
+        return False
+
+
+class RateLimitException(Exception):
+    """An exception raised when the scraper encounters rate limiting."""
+
+    def __init__(self, message):
+        super().__init__(message)
