@@ -92,8 +92,11 @@ def prepare_parquet_file(df: pd.DataFrame) -> pa.Table:
 
 @task(retries=3, log_prints=True)
 def save_and_upload_to_gcs(
-    table: pa.table, bucket_name: str, to_path: str, credentials_path: str,
-    batch_number: int
+    table: pa.table,
+    bucket_name: str,
+    to_path: str,
+    credentials_path: str,
+    batch_number: int,
 ):
     # Save the pyarrow Table as a Parquet file
     with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as temp_file:

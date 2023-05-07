@@ -1,7 +1,3 @@
-# Asynchronous functions for cleaning data
-# import asyncio
-# import aiohttp
-
 # Geopy imports
 from geopy.adapters import AioHTTPAdapter
 from geopy.geocoders import Nominatim

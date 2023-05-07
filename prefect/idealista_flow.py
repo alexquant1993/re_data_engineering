@@ -1,11 +1,12 @@
 # Import custom functions
-from idealista_scraper_class import IdealistaScraper
-from clean_scraped_data import clean_scraped_data
-from upload_to_gcp import (
+from src.scraper_class import IdealistaScraper
+from src.clean_data import clean_scraped_data
+from src.gcp_upload import (
     prepare_parquet_file,
     save_and_upload_to_gcs,
     load_data_from_gcs_to_bigquery,
 )
+from src.utils import chunks
 
 # Built-in imports
 import asyncio
@@ -49,12 +50,6 @@ async def scrape_properties_task(property_urls: List[str]) -> List[Dict[str, Any
     ]
 
     return flattened_properties
-
-
-def chunks(lst: List[str], n: int) -> List[str]:
-    """Yield successive n-sized chunks from lst."""
-    for i in range(0, len(lst), n):
-        yield lst[i : i + n]
 
 
 @flow(log_prints=True)
@@ -128,8 +123,8 @@ async def idealista_to_gcp_pipeline(
         table_id = f"{type_search}-{province}-production"
 
     # Start scraping with a random wait time to avoid being blocked
-    # random_wait_seconds = random.uniform(0, 30) * 60
-    # await asyncio.sleep(random_wait_seconds)
+    random_wait_seconds = random.uniform(0, 30) * 60
+    await asyncio.sleep(random_wait_seconds)
 
     # Time the scraping process
     start_time = time.time()
@@ -189,25 +184,3 @@ async def idealista_to_gcp_pipeline(
     # scraper = IdealistaScraper()
     # property_data = await scraper.scrape_properties(url)
     # await scraper.session.aclose()
-
-
-if __name__ == "__main__":
-    zone = "madrid"
-    province = "madrid"
-    type_search = "sale"
-    time_period = "24"
-    bucket_name = "idealista_data_lake_idealista-scraper-384619"
-    dataset_id = "idealista_listings"
-    credentials_path = "~/.gcp/terraform.json"
-    asyncio.run(
-        idealista_to_gcp_pipeline(
-            province,
-            type_search,
-            time_period,
-            bucket_name,
-            dataset_id,
-            credentials_path,
-            zone,
-            testing=True,
-        )
-    )

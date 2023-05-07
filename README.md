@@ -182,7 +182,7 @@ pip install -r requirements.txt
     - Download JSON credentials: `gcloud iam service-accounts keys create ~/.gcp/prefect-agent.json --iam-account=prefect-agent@$PROJECT_ID.iam.gserviceaccount.com`
     - Login with service account: `gcloud auth activate-service-account --key-file ~/.gcp/prefect-agent.json`
 
-# Step 8: Run the pipelines
+# Step 8: Run the pipelines in VM instance
 - Login to prefect cloud: `prefect cloud login -k {YOUR_API_KEY}`
 - Create deployment file: `prefect deployment build idealista_pipeline.py:idealista_to_gcp_pipeline -n madrid_sale_daily -o idealista-pipeline-daily.yaml`
 - Deployment file customization:
@@ -193,9 +193,9 @@ pip install -r requirements.txt
         - time_period: 24
         - type_search: sale
         - credentials_path: ~/.gcp/prefect-agent.json
-    - Set up the schedule:
-        - cron: 0 22 * * *
+    - Set up the schedule to run the pipeline every day at 2:00 AM:
+        - cron: 0 2 * * *
         - timezone: Europe/Madrid
         - day_or: true
-- Apply deployment: `prefect deployment apply idealista_to_gcs_pipeline-daily.yaml`
-- Run flow: `prefect deployment run "idealista-to-gcs-pipeline/madrid_sale_daily"`
+- Apply deployment: `prefect deployment apply idealista-pipeline-daily.yaml`
+- Run flow: `prefect deployment run "idealista_to_gcp_pipeline/madrid_sale_daily"`
