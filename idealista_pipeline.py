@@ -12,6 +12,7 @@ import asyncio
 from typing import Dict, List, Any
 from dataclasses import asdict
 import random
+import time
 
 # Prefect dependencies
 from prefect import flow, task
@@ -42,10 +43,18 @@ async def scrape_properties_task(property_urls: List[str]) -> List[Dict[str, Any
     """
     async with IdealistaScraper() as scraper:
         scraped_properties = await scraper.scrape_properties(property_urls)
+
     flattened_properties = [
         scraper.flatten_dict(asdict(item)) for item in scraped_properties
     ]
+
     return flattened_properties
+
+
+def chunks(lst: List[str], n: int) -> List[str]:
+    """Yield successive n-sized chunks from lst."""
+    for i in range(0, len(lst), n):
+        yield lst[i : i + n]
 
 
 @flow(log_prints=True)
@@ -57,6 +66,7 @@ async def idealista_to_gcp_pipeline(
     dataset_id: str,
     credentials_path: str,
     zone: str = None,
+    batch_size: int = 30,
     testing: bool = False,
 ):
     """
@@ -74,6 +84,7 @@ async def idealista_to_gcp_pipeline(
         credentials_path: The path to the GCS credentials
         zone: The zone to search in the province. These zones are defined in
         the idealista website. (default None = search in the whole province)
+        batch_size: The number of properties to scrape before uploading to GCS (default 30)
         testing: Whether to run the pipeline in testing mode (default False)
     """
     # Get base URL
@@ -104,35 +115,72 @@ async def idealista_to_gcp_pipeline(
     url = f"{base_url}/{type_search_url}/{location_url}/{time_period_url}/"
     print(f"Scraping {url}")
 
-    # Start scraping with a random wait time to avoid being blocked
-    # random_wait_seconds = random.uniform(0, 30) * 60
-    # await asyncio.sleep(random_wait_seconds)
-    # Scrape idealista listings given a search URL
-    property_urls = await scrape_search_task(url, paginate=not testing)
-    property_data = await scrape_properties_task(property_urls)
-
-    # Clean up scraped data
-    cleaned_property_data = await clean_scraped_data(property_data)
-
-    # Upload to GCS
-    # Produce to path given search parameters
+    # Produce path to upload in GCS, given search parameters
     if testing:
         to_path = f"testing/{province}/{type_search}/"
     else:
         to_path = f"production/{province}/{type_search}/"
-    pa_cleaned_property_data = prepare_parquet_file(cleaned_property_data)
-    parquet_file_path = save_and_upload_to_gcs(
-        pa_cleaned_property_data, bucket_name, to_path, credentials_path
-    )
 
     # Get table id
     if testing:
         table_id = f"{type_search}-{province}-testing"
     else:
         table_id = f"{type_search}-{province}-production"
-    # Upload to BigQuery
-    load_data_from_gcs_to_bigquery(
-        bucket_name, parquet_file_path, dataset_id, table_id, credentials_path
+
+    # Start scraping with a random wait time to avoid being blocked
+    # random_wait_seconds = random.uniform(0, 30) * 60
+    # await asyncio.sleep(random_wait_seconds)
+
+    # Time the scraping process
+    start_time = time.time()
+    max_execution_time = 18 * 60 * 60  # 18 hours
+
+    # Scrape idealista listings given a search URL
+    property_urls = await scrape_search_task(url, paginate=not testing)
+
+    # Process property URLs in batches
+    processed_properties = 0
+    for property_urls_batch in chunks(property_urls, batch_size):
+        # Control the execution time
+        elapsed_time = time.time() - start_time
+        if elapsed_time > max_execution_time:
+            print("Max execution time reached. Stopping the scraping process.")
+            break
+
+        # Scrape properties for each batch
+        property_data = await scrape_properties_task(property_urls_batch)
+
+        # If there is no property data, skip the current batch
+        if not property_data:
+            continue
+
+        # Clean up scraped data
+        cleaned_property_data = await clean_scraped_data(property_data)
+
+        # Upload to GCS
+        pa_cleaned_property_data = prepare_parquet_file(cleaned_property_data)
+        parquet_file_path = save_and_upload_to_gcs(
+            pa_cleaned_property_data, bucket_name, to_path, credentials_path
+        )
+
+        # Upload to BigQuery
+        load_data_from_gcs_to_bigquery(
+            bucket_name, parquet_file_path, dataset_id, table_id, credentials_path
+        )
+
+        # Update success counter
+        processed_properties += len(property_data)
+        print(f"Processed {processed_properties} properties")
+
+    # Logging final results
+    elapsed_seconds = time.time() - start_time
+    elapsed_hours = int(elapsed_seconds // 3600)
+    elapsed_minutes = int((elapsed_seconds % 3600) // 60)
+    elapsed_seconds = int(elapsed_seconds % 60)
+
+    pcg_properties = (processed_properties / len(property_urls)) * 100
+    print(
+        f"Scraped {processed_properties}/{len(property_urls)} ({pcg_properties:.2f}% of properties) in {elapsed_hours} hours, {elapsed_minutes} minutes, and {elapsed_seconds} seconds"
     )
 
     # Debugging one URL
