@@ -224,7 +224,10 @@ class IdealistaScraper:
 
     def rotate_headers(self):
         """
-        Update the HTTP session headers based on the request count. If requests made since the last rotation meet the rotation threshold, replace the session headers with a random set from the self.HEADERS list and reset counters. Otherwise, increment the requests_since_last_rotation counter
+        Update the HTTP session headers based on the request count. If requests made since
+        the last rotation meet the rotation threshold, replace the session headers with a
+        random set from the self.HEADERS list and reset counters. Otherwise, increment the
+        requests_since_last_rotation counter
         """
         if self.requests_since_last_rotation >= self.requests_to_rotate:
             self.session.headers = random.choice(self.HEADERS)

@@ -1,5 +1,5 @@
 import asyncio
-from prefect.idealista_flow import idealista_to_gcp_pipeline
+from prefect_pipelines.idealista_flow import idealista_to_gcp_pipeline
 
 if __name__ == "__main__":
     zone = "madrid"
