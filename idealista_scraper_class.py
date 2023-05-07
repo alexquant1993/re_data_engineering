@@ -124,11 +124,11 @@ class IdealistaScraper:
         self.MAX_BACKOFF = 64
 
         # Parameters for the random sleep interval
-        self.MIN_SLEEP_INTERVAL = 1
-        self.MAX_SLEEP_INTERVAL = 5
+        self.MIN_SLEEP_INTERVAL = 25
+        self.MAX_SLEEP_INTERVAL = 35
 
         # Token bucket algorithm parameters
-        self.token_bucket = TokenBucket(tokens=1, fill_rate=1 / 5)
+        self.token_bucket = TokenBucket(tokens=1, fill_rate=1 / 27)
 
         # Default parameters for the search
         self.session = None
@@ -360,10 +360,10 @@ class IdealistaScraper:
 
                 # Sleep after every 50 requests to avoid being rate limited
                 counter += 1
-                if counter % 50 == 0:
+                if counter % 30 == 0:
                     sleep_time = self.get_random_sleep_interval() * 2
                     print(
-                        f"sleeping for {sleep_time: .2f} seconds after 50 requests to avoid rate limiting"
+                        f"sleeping for {sleep_time: .2f} seconds after 30 requests to avoid rate limiting"
                     )
                     await asyncio.sleep(sleep_time)
             except RateLimitException as e:

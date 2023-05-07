@@ -140,7 +140,8 @@ async def idealista_to_gcp_pipeline(
 
     # Process property URLs in batches
     processed_properties = 0
-    for property_urls_batch in chunks(property_urls, batch_size):
+    for i, property_urls_batch in enumerate(chunks(property_urls, batch_size)):
+        print(f"Processing batch {i}...")
         # Control the execution time
         elapsed_time = time.time() - start_time
         if elapsed_time > max_execution_time:
@@ -160,7 +161,7 @@ async def idealista_to_gcp_pipeline(
         # Upload to GCS
         pa_cleaned_property_data = prepare_parquet_file(cleaned_property_data)
         parquet_file_path = save_and_upload_to_gcs(
-            pa_cleaned_property_data, bucket_name, to_path, credentials_path
+            pa_cleaned_property_data, bucket_name, to_path, credentials_path, i
         )
 
         # Upload to BigQuery
