@@ -123,8 +123,9 @@ async def idealista_to_gcp_pipeline(
         table_id = f"{type_search}-{province}-production"
 
     # Start scraping with a random wait time to avoid being blocked
-    random_wait_seconds = random.uniform(0, 30) * 60
-    await asyncio.sleep(random_wait_seconds)
+    if not testing:
+        random_wait_seconds = random.uniform(0, 30) * 60
+        await asyncio.sleep(random_wait_seconds)
 
     # Time the scraping process
     start_time = time.time()

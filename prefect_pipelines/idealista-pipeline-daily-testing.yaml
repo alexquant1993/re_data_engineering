@@ -1,7 +1,7 @@
 ###
 ### A complete description of a Prefect Deployment for flow 'idealista-to-gcp-pipeline'
 ###
-name: madrid_sale_daily
+name: madrid_sale_daily_testing
 description: |-
   Scrape idealista listings given search parameters and upload to GCS and BigQuery.
   Args:
@@ -26,18 +26,15 @@ work_pool_name: null
 tags: []
 parameters:
   zone: madrid
-  testing: false
+  testing: true
   province: madrid
   dataset_id: idealista_listings
   bucket_name: idealista_data_lake_idealista-scraper-384619
   time_period: 24
   type_search: sale
   credentials_path: ~/.gcp/prefect-agent.json
-schedule:
-  cron: 0 2 * * *
-  timezone: Europe/Madrid
-  day_or: true
-is_schedule_active: true
+schedule: null
+is_schedule_active: null
 infra_overrides: {}
 infrastructure:
   type: process
@@ -123,4 +120,4 @@ parameter_openapi_schema:
   - dataset_id
   - credentials_path
   definitions: null
-timestamp: '2023-05-08T21:48:35.105458+00:00'
+timestamp: '2023-05-08T21:52:16.634993+00:00'

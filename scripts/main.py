@@ -1,3 +1,10 @@
+import sys
+import os
+
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if project_root not in sys.path:
+    sys.path.append(project_root)
+
 import asyncio
 from prefect_pipelines.idealista_flow import idealista_to_gcp_pipeline
 
@@ -8,7 +15,7 @@ if __name__ == "__main__":
     time_period = "24"
     bucket_name = "idealista_data_lake_idealista-scraper-384619"
     dataset_id = "idealista_listings"
-    credentials_path = "~/.gcp/terraform.json"
+    credentials_path = "~/.gcp/prefect-agent.json"
     asyncio.run(
         idealista_to_gcp_pipeline(
             province,
