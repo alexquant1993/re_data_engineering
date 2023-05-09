@@ -184,7 +184,7 @@ pip install -r requirements.txt
 
 # Step 8: Run the pipelines in VM instance
 - Login to prefect cloud: `prefect cloud login -k {YOUR_API_KEY}`
-- Create deployment file: `prefect deployment build idealista_pipeline.py:idealista_to_gcp_pipeline -n madrid_sale_daily -o idealista-pipeline-daily.yaml`
+- Create deployment file: `prefect deployment build idealista_flow.py:idealista_to_gcp_pipeline -n madrid_sale_daily -o idealista-pipeline-daily.yaml`
 - Deployment file customization:
     - Set up parameters according to your needs:
         - testing: true
@@ -198,4 +198,8 @@ pip install -r requirements.txt
         - timezone: Europe/Madrid
         - day_or: true
 - Apply deployment: `prefect deployment apply idealista-pipeline-daily.yaml`
-- Run flow: `prefect deployment run "idealista_to_gcp_pipeline/madrid_sale_daily"`
+- Run flow: `prefect deployment run "idealista-to-gcp-pipeline/madrid_sale_daily"`
+- Create as well a testing deployment: 
+    - Create yaml file: `prefect deployment build idealista_flow.py:idealista_to_gcp_pipeline -n madrid_sale_daily_testing -o idealista-pipeline-daily-testing.yaml`
+    - Apply deployment: `prefect deployment apply idealista-pipeline-daily-testing.yaml`
+    - Run flow: `prefect deployment run "idealista-to-gcp-pipeline/madrid_sale_daily_testing"`
