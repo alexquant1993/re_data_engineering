@@ -124,8 +124,11 @@ async def idealista_to_gcp_pipeline(
 
     # Start scraping with a random wait time to avoid being blocked
     if not testing:
-        random_wait_seconds = random.uniform(0, 30) * 60
-        await asyncio.sleep(random_wait_seconds)
+        sleeping_time = random.uniform(0, 30) * 60
+        print(
+            f"Random delay before initiating actions - sleeping for {sleeping_time / 60} minutes"
+        )
+        await asyncio.sleep(sleeping_time)
 
     # Time the scraping process
     start_time = time.time()

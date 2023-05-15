@@ -16,6 +16,8 @@ from http import HTTPStatus
 import httpx
 from bs4 import BeautifulSoup
 from tqdm.asyncio import tqdm_asyncio
+from latest_user_agents import get_latest_user_agents
+import httpagentparser
 
 
 @dataclass
@@ -51,73 +53,6 @@ class IdealistaScraper:
         self.MAX_PAGES = 60
         self.SEMAPHORE = asyncio.Semaphore(self.CONCURRENT_REQUESTS_LIMIT)
 
-        # Rotating headers to avoid being blocked
-        self.HEADERS = [
-            # Chrome 112 Windows
-            {
-                "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-                "accept-encoding": "gzip, deflate, br",
-                "accept-language": "es-ES,es;q=0.9",
-                "cache-control": "max-age=0",
-                "referer": "https://www.google.es/",
-                "upgrade-insecure-requests": "1",
-                "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36",
-            },
-            # Firefox 112 Windows
-            {
-                "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-                "accept-encoding": "gzip, deflate, br",
-                "accept-language": "es-ES,es;q=0.8,en-US;q=0.5,en;q=0.3",
-                "referer": "https://www.google.es/",
-                "upgrade-insecure-requests": "1",
-                "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/112.0",
-            },
-            # Edge 112 Windows
-            {
-                "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-                "accept-encoding": "gzip, deflate, br",
-                "accept-language": "es,en-US;q=0.9,en;q=0.8",
-                "cache-control": "max-age=0",
-                "referer": "https://www.google.es/",
-                "upgrade-insecure-requests": "1",
-                "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36 Edg/112.0.1722.68",
-            },
-            # Chrome 112 Mac
-            {
-                "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,/;q=0.8,application/signed-exchange;v=b3;q=0.7",
-                "accept-encoding": "gzip, deflate, br",
-                "accept-language": "es-ES,es;q=0.9",
-                "cache-control": "max-age=0",
-                "referer": "https://www.google.es/",
-                "upgrade-insecure-requests": "1",
-                "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36",
-            },
-            # Firefox 102 Mac
-            {
-                "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,/;q=0.8",
-                "accept-encoding": "gzip, deflate, br",
-                "accept-language": "es-ES,es;q=0.8,en-US;q=0.5,en;q=0.3",
-                "referer": "https://www.google.es/",
-                "upgrade-insecure-requests": "1",
-                "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:102.0) Gecko/20100101 Firefox/102.0",
-            },
-            # Safari 16.3 Mac
-            {
-                "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,/;q=0.8",
-                "accept-encoding": "gzip, deflate",
-                "accept-language": "es-ES,es;q=0.9",
-                "referer": "https://www.google.es/",
-                "upgrade-insecure-requests": "1",
-                "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.3 Safari/605.1.15",
-            },
-        ]
-        self.MIN_ROTATE_INTERVAL = 5
-        self.MAX_ROTATE_INTERVAL = 20
-        self.requests_since_last_rotation = 0
-        self.requests_to_rotate = random.randint(
-            self.MIN_ROTATE_INTERVAL, self.MAX_ROTATE_INTERVAL
-        )
-
         # Parameters for the exponential backoff algorithm
         self.MAX_RETRIES = 3
         self.INITIAL_BACKOFF = 32
@@ -136,10 +71,12 @@ class IdealistaScraper:
         self.last_successful_url = None
 
     async def __aenter__(self):
-        headers = random.choice(self.HEADERS)
+        headers = self.get_random_header()
         self.session = httpx.AsyncClient(
             headers=headers, follow_redirects=True, timeout=60
         )
+        # Make warm-up requests to mimic a real user
+        await self.make_request(self.base_url)
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -164,9 +101,6 @@ class IdealistaScraper:
                     # Wait for a token to be available
                     while not self.token_bucket.consume(1):
                         await asyncio.sleep(random.uniform(1, 5))
-
-                    # Rotate the headers if necessary
-                    self.rotate_headers()
 
                     # Update the referer header with the last successful URL if available
                     if self.last_successful_url:
@@ -222,21 +156,88 @@ class IdealistaScraper:
                         )
                         return None
 
-    def rotate_headers(self):
+    def get_random_header(self):
         """
-        Update the HTTP session headers based on the request count. If requests made since
-        the last rotation meet the rotation threshold, replace the session headers with a
-        random set from the self.HEADERS list and reset counters. Otherwise, increment the
-        requests_since_last_rotation counter
+        Get a random header from the latest user agents. The headers are chosen among the following:
+        - Windows + Chrome. Weight: 0.64
+        - Windows + Firefox. Weight: 0.1
+        - MacOS + Chrome. Weight: 0.1
+        - MacOS + Safari. Weight: 0.13
+        - MacOS + Firefox. Weight: 0.03
         """
-        if self.requests_since_last_rotation >= self.requests_to_rotate:
-            self.session.headers = random.choice(self.HEADERS)
-            self.requests_since_last_rotation = 0
-            self.requests_to_rotate = random.randint(
-                self.MIN_ROTATE_INTERVAL, self.MAX_ROTATE_INTERVAL
-            )
-        else:
-            self.requests_since_last_rotation += 1
+        # Get latest user agents
+        latest_user_agents = get_latest_user_agents()
+
+        # Classify the user agents by OS and browser
+        agents_dict = {}
+        for user_agent in latest_user_agents:
+            parsed_agent = httpagentparser.detect(user_agent)
+            os = parsed_agent["platform"]["name"]
+            browser = parsed_agent["browser"]["name"]
+            agents_dict[f"{os}-{browser}"] = user_agent
+
+        # Create a dictionary of headers for each OS and browser
+        # Windows + Chrome
+        headers_windows_chrome = {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "accept-encoding": "gzip, deflate, br",
+            "accept-language": "es-ES,es;q=0.9",
+            "cache-control": "max-age=0",
+            "referer": "https://www.google.es/",
+            "upgrade-insecure-requests": "1",
+            "user-agent": agents_dict["Windows-Chrome"],
+        }
+        # Windows + Firefox
+        headers_windows_firefox = {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            "accept-encoding": "gzip, deflate, br",
+            "accept-language": "es-ES,es;q=0.8,en-US;q=0.5,en;q=0.3",
+            "referer": "https://www.google.es/",
+            "upgrade-insecure-requests": "1",
+            "user-agent": agents_dict["Windows-Firefox"],
+        }
+        # macOS + Chrome
+        headers_macos_chrome = {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,/;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "accept-encoding": "gzip, deflate, br",
+            "accept-language": "es-ES,es;q=0.9",
+            "cache-control": "max-age=0",
+            "referer": "https://www.google.es/",
+            "upgrade-insecure-requests": "1",
+            "user-agent": agents_dict["Mac OS-Chrome"],
+        }
+        # macOS + Safari
+        headers_macos_safari = {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,/;q=0.8",
+            "accept-language": "es-ES,es;q=0.9",
+            "user-agent": agents_dict["Mac OS-Safari"],
+            "referer": "https://www.google.es/",
+            "accept-encoding": "gzip, deflate, br",
+        }
+        # macOS + Firefox
+        headers_macos_firefox = {
+            "user-agent": agents_dict["Mac OS-Firefox"],
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,/;q=0.8",
+            "accept-language": "es-ES,es;q=0.8,en-US;q=0.5,en;q=0.3",
+            "accept-encoding": "gzip, deflate, br",
+            "referer": "https://www.google.es/",
+            "dnt": "1",
+            "upgrade-insecure-requests": "1",
+        }
+
+        # Get weights given the distribution of usage for each OS and browser
+        weights = [0.64, 0.1, 0.1, 0.13, 0.03]
+
+        return random.choices(
+            [
+                headers_windows_chrome,
+                headers_windows_firefox,
+                headers_macos_chrome,
+                headers_macos_safari,
+                headers_macos_firefox,
+            ],
+            weights=weights,
+        )[0]
 
     async def handle_rate_limit(
         self, response: httpx.Response, retry_count: int
@@ -416,11 +417,12 @@ class IdealistaScraper:
             property_urls.extend(self.parse_search(await response))
 
         # Scraping pages succesfuly - sleep to avoid rate limiting
-        sleep_time = self.get_random_sleep_interval() * 2
+        sleeping_hours = random.uniform(1, 3)
+        sleeping_time = sleeping_hours * 60 * 60
         print(
-            f"sleeping for {sleep_time: .2f} seconds after {total_pages} requests to avoid rate limiting"
+            f"sleeping for {sleeping_hours} seconds after scraping {total_pages} pages to avoid rate limiting"
         )
-        await asyncio.sleep(sleep_time)
+        await asyncio.sleep(sleeping_time)
 
         return property_urls
 

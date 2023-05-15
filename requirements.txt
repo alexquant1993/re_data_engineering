@@ -9,3 +9,5 @@ prefect==2.10.6
 prefect-gcp==0.4.1
 pyarrow==11.0.0
 tqdm==4.65.0
+latest_user_agents==0.0.3
+httpagentparser==1.9.5

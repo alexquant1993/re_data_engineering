@@ -153,7 +153,12 @@ def split_basic_features(features: List[str]) -> Dict[str, str]:
             features.remove(feature)
 
         elif "baño" in lower_feature:
-            dict_out["NUM_BATHROOMS"] = int(re.search(r"\d+", lower_feature).group())
+            if "sin" in lower_feature:
+                dict_out["NUM_BATHROOMS"] = 0
+            else:
+                dict_out["NUM_BATHROOMS"] = int(
+                    re.search(r"\d+", lower_feature).group()
+                )
             features.remove(feature)
 
         elif "garaje" in lower_feature:
