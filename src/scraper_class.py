@@ -417,12 +417,11 @@ class IdealistaScraper:
             property_urls.extend(self.parse_search(await response))
 
         # Scraping pages succesfuly - sleep to avoid rate limiting
-        sleeping_hours = random.uniform(1, 3)
-        sleeping_time = sleeping_hours * 60 * 60
+        sleep_time = self.get_random_sleep_interval() * 2
         print(
-            f"sleeping for {sleeping_hours} seconds after scraping {total_pages} pages to avoid rate limiting"
+            f"sleeping for {sleep_time: .2f} seconds after {total_pages} requests to avoid rate limiting"
         )
-        await asyncio.sleep(sleeping_time)
+        await asyncio.sleep(sleep_time)
 
         return property_urls
 
