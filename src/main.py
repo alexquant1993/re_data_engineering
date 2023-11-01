@@ -6,7 +6,7 @@ if project_root not in sys.path:
     sys.path.append(project_root)
 
 import asyncio
-from prefect_pipelines.idealista_flow import idealista_to_gcp_pipeline
+from flows.idealista_flow import idealista_to_gcp_pipeline
 
 if __name__ == "__main__":
     zone = "madrid"
@@ -25,6 +25,7 @@ if __name__ == "__main__":
             dataset_id,
             credentials_path,
             zone,
+            batch_size=3,
             testing=True,
         )
     )
