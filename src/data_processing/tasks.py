@@ -1,8 +1,7 @@
 import re
 from typing import Any, Dict, List
-import pandas as pd
-from prefect import task
 
+import pandas as pd
 from data_processing.feature_parser import (
     split_amenity_features,
     split_basic_features,
@@ -11,6 +10,7 @@ from data_processing.feature_parser import (
 )
 from data_processing.geocoding import get_geocode_details_batch
 from data_processing.utils import get_features_asdf, parse_date_in_column
+from prefect import task
 
 
 @task(retries=3, log_prints=True)

@@ -1,12 +1,13 @@
-import sys
+import asyncio
 import os
+import sys
+
+from flows.idealista_flow import idealista_to_gcp_pipeline
 
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if project_root not in sys.path:
     sys.path.append(project_root)
 
-import asyncio
-from flows.idealista_flow import idealista_to_gcp_pipeline
 
 if __name__ == "__main__":
     zone = "madrid"

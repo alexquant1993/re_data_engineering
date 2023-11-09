@@ -1,6 +1,7 @@
 import os
-from google.cloud import bigquery
+
 from google.api_core.exceptions import NotFound
+from google.cloud import bigquery
 from prefect import task
 
 

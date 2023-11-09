@@ -1,9 +1,10 @@
 import re
+
 import pandas as pd
-from tqdm import tqdm
 from geopy.adapters import AioHTTPAdapter
-from geopy.geocoders import Nominatim
 from geopy.extra.rate_limiter import AsyncRateLimiter
+from geopy.geocoders import Nominatim
+from tqdm import tqdm
 
 
 async def get_geocode_details(address1: str, address2: str, geocode) -> pd.Series:

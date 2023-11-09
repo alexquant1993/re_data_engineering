@@ -1,5 +1,5 @@
-import pyarrow as pa
 import pandas as pd
+import pyarrow as pa
 from prefect import task
 
 

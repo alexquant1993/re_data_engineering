@@ -1,6 +1,7 @@
 import os
-from datetime import datetime
 import tempfile
+from datetime import datetime
+
 import pyarrow as pa
 import pyarrow.parquet as pq
 from google.cloud import storage

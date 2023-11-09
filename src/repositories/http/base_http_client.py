@@ -1,8 +1,8 @@
 import asyncio
-from http import HTTPStatus
 import random
-import httpx
+from http import HTTPStatus
 
+import httpx
 from repositories.http.rate_limiter import RateLimiter
 
 

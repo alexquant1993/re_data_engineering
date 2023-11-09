@@ -1,7 +1,7 @@
-from typing import Any, Dict, List
-from prefect import task
 from dataclasses import asdict
+from typing import Any, Dict, List
 
+from prefect import task
 from scrapers.idealista_scraper import IdealistaScraper
 from scrapers.utils import flatten_dict
 

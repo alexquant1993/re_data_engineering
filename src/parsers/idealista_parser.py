@@ -1,9 +1,10 @@
-from datetime import datetime
 import math
 import re
-from bs4 import BeautifulSoup
+from datetime import datetime
 from urllib.parse import urljoin
+
 import httpx
+from bs4 import BeautifulSoup
 from models.property import Property
 from parsers.base_parser import BaseParser
 from parsers.helpers import get_features, get_image_data, get_images, get_plans

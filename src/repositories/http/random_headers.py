@@ -1,7 +1,8 @@
 import random
 from typing import Dict
-from latest_user_agents import get_latest_user_agents
+
 import httpagentparser
+from latest_user_agents import get_latest_user_agents
 
 
 def get_random_header() -> Dict[str, str]:

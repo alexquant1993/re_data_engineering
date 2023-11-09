@@ -1,8 +1,9 @@
-from collections import defaultdict
 import json
 import re
+from collections import defaultdict
 from typing import Any, Dict, List
 from urllib.parse import urljoin
+
 from bs4 import BeautifulSoup
 
 
