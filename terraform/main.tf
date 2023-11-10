@@ -54,7 +54,7 @@ resource "aws_instance" "idealista_vm_2" {
   key_name = aws_key_pair.idealista_vm_key.key_name
 
   root_block_device {
-    volume_size = 20 # 30 GB of disk space
+    volume_size = 20
   }
 
   vpc_security_group_ids = [aws_security_group.allow_ssh.id]
