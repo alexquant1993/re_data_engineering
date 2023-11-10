@@ -100,6 +100,17 @@ def split_basic_features(features: List[str]) -> Dict[str, str]:
             dict_out["BALCONY"] = True
             features.remove(feature)
 
+        elif "amuebla" in lower_feature or "cocina" in lower_feature:
+            if "amueblado" in lower_feature:
+                dict_out["FURNISHED"] = True
+            elif "sin amueblar" in lower_feature:
+                dict_out["FURNISHED"] = False
+            if "cocina equipada" in lower_feature:
+                dict_out["KITCHEN_EQUIPPED"] = True
+            elif "cocina sin equipar" in lower_feature:
+                dict_out["KITCHEN_EQUIPPED"] = False
+            features.remove(feature)
+
     # Set default values for keys that were not found in the features
     dict_out.setdefault("FLAG_PARKING", False)
     dict_out.setdefault("BUILTIN_WARDROBE", False)

@@ -99,8 +99,10 @@ async def idealista_to_gcp_pipeline(
             continue
 
         try:
-            cleaned_property_data = await clean_scraped_data(property_data)
-            pa_cleaned_property_data = prepare_parquet_file(cleaned_property_data)
+            cleaned_property_data = await clean_scraped_data(property_data, type_search)
+            pa_cleaned_property_data = prepare_parquet_file(
+                cleaned_property_data, type_search
+            )
             parquet_file_path = save_and_upload_to_gcs(
                 pa_cleaned_property_data, bucket_name, to_path, credentials_path, i
             )
@@ -109,7 +111,7 @@ async def idealista_to_gcp_pipeline(
             )
         except Exception as e:
             print(f"Error processing batch {i}: {e}")
-            continue
+            break
 
         processed_properties += len(property_data)
         print(f"Processed {processed_properties} properties")

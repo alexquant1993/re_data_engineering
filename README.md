@@ -63,8 +63,9 @@ on windows_amd64
 # Step 5: Create GCP resources with Terraform
 - Create terraform directory: `mkdir terraform`
 - Move to terraform directory: `cd terraform`
-- Create a file named `main.tf` where we will define the resources we want to create in GCP.
-    - Create a VM instance: e2-medium (2 vCPUs, 4 GB memory), Ubuntu 20.04 LTS, 20 GB disk. A ssh key pair will be used to connect to the VM.
+> We will sign up for the EC2 instance savings plan for a year to get a discount on the VMs.
+- Create a file named `main.tf` where we will define the resources we want to create in AWS.
+    - Create two VM instance: t4g.small (2 vCPUs, 4 GB memory), Ubuntu 22.04 LTS, 20 GB disk. A ssh key pair will be used to connect to the VM. NOTE: Some regions are disabled by default, for instance eu-south-2 (Spain) was disabled in my case. To enable it, go to IAM > Account Settings > Region and select the region you want to enable.
     - Create a GCS bucket
     - Create a BigQuery dataset
 - Create a file named `variables.tf` where we will define the variables we will use in `main.tf`.
@@ -93,7 +94,7 @@ on windows_amd64
 ```bash
 Host idealista_vm
 	Hostname {vm_ip_address}
-	User root
+	User ubuntu
     Port 22
 	IdentityFile {~/.ssh/private_ssh_key}
 ```
@@ -101,6 +102,16 @@ Host idealista_vm
 - This will open a new VSCode window with the VM instance connected.
 - Create a new user in the VM instance: `sudo adduser aarroyo && sudo usermod -aG sudo aarroyo`
 - Change user to `aarroyo`: `sudo su - aarroyo`
+- Add the SSH public key to the user. [Check AWS tutorial](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/managing-users.html)
+```bash
+mkdir .ssh
+chmod 700 .ssh
+touch .ssh/authorized_keys
+chmod 600 .ssh/authorized_keys
+nano .ssh/authorized_keys
+# Paste public key idealista_vm.pub here and save.
+```
+- Now you will be able to connect to the VM instance using the `aarroyo` user. Change the config file accordingly.
 
 # Step 7: Install packages and software in VM instance
 - Check CPU and disk space information: `lscpu` and `df -h`
@@ -112,9 +123,12 @@ sudo apt-get install bzip2 libxml2-dev
 # Install the required language pack
 sudo apt-get install language-pack-es-base
 ```
+
+> The anaconda URL is for ARM64 architecture. If you are using a different architecture, check the [Anaconda website](https://www.anaconda.com/products/individual) to get the correct URL.
+
 - Install Anaconda:
 ```bash
-wget https://repo.anaconda.com/archive/Anaconda3-2023.03-1-Linux-x86_64.sh -O ~/anaconda.sh
+wget https://repo.anaconda.com/archive/Anaconda3-2023.09-0-Linux-aarch64.sh -O ~/anaconda.sh
 bash ~/anaconda.sh -b -p $HOME/anaconda3
 echo 'export PATH="$HOME/anaconda3/bin:$PATH"' >> ~/.bashrc
 source ~/.bashrc

@@ -12,7 +12,7 @@ if project_root not in sys.path:
 if __name__ == "__main__":
     zone = "madrid"
     province = "madrid"
-    type_search = "sale"
+    type_search = "rent"
     time_period = "24"
     bucket_name = "idealista_data_lake_idealista-scraper-384619"
     dataset_id = "idealista_listings"

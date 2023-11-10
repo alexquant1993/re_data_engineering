@@ -2,6 +2,8 @@ import re
 from typing import Any, Dict, List
 
 import pandas as pd
+from prefect import task
+
 from data_processing.feature_parser import (
     split_amenity_features,
     split_basic_features,
@@ -10,11 +12,12 @@ from data_processing.feature_parser import (
 )
 from data_processing.geocoding import get_geocode_details_batch
 from data_processing.utils import get_features_asdf, parse_date_in_column
-from prefect import task
 
 
 @task(retries=3, log_prints=True)
-async def clean_scraped_data(property_data: List[Dict[str, Any]]) -> pd.DataFrame:
+async def clean_scraped_data(
+    property_data: List[Dict[str, Any]], type_search: str
+) -> pd.DataFrame:
     """Clean the data from the scraped properties."""
     print("Cleaning data...")
     df = pd.DataFrame(property_data)
@@ -24,12 +27,15 @@ async def clean_scraped_data(property_data: List[Dict[str, Any]]) -> pd.DataFram
     df_out["ID_LISTING"] = df["url"].apply(lambda x: re.findall(r"\d+", x)[0])
     df_out["URL"] = df["url"]
     # Get type of property and address from title and location
-    df_out["TYPE_PROPERTY"] = df["title"].str.split("en venta en").str[0].str.strip()
-    df_out["ADDRESS"] = (
-        df["title"].str.split("en venta en").str[1].str.strip() + ", " + df["location"]
-    )
-    df_out["LOCATION"] = df["location"]
+    if type_search == "sale":
+        pattern = r"(.*) en venta en (.*)"
+    else:
+        pattern = r"Alquiler de (.*) en (.*)"
+    df_match = df["title"].str.extract(pattern).applymap(lambda x: x.strip())
+    df_out["TYPE_PROPERTY"] = df_match[0]
+    df_out["ADDRESS"] = df_match[1] + ", " + df["location"]
     # Get ZIP code based on address and location
+    df_out["LOCATION"] = df["location"]
     df_geocode_details = await get_geocode_details_batch(df_out)
     df_out = pd.concat([df_out, df_geocode_details], axis=1)
     # Get price and currency

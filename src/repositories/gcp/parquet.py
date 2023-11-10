@@ -3,8 +3,8 @@ import pyarrow as pa
 from prefect import task
 
 
-@task(retries=3, log_prints=True)
-def prepare_parquet_file(df: pd.DataFrame) -> pa.Table:
+@task(log_prints=True)
+def prepare_parquet_file(df: pd.DataFrame, type_search: str) -> pa.Table:
     """Prepare a Pandas DataFrame for writing to Parquet"""
     schema_fields = [
         ("ID_LISTING", pa.string()),
@@ -65,6 +65,14 @@ def prepare_parquet_file(df: pd.DataFrame) -> pa.Table:
         ("LAST_UPDATE_DATE", pa.date32()),
         ("TIMESTAMP", pa.timestamp("s")),
     ]
+
+    # Define the index at which you want to insert the new elements
+    index = schema_fields.index(("BALCONY", pa.bool_())) + 1
+
+    if type_search == "rent":
+        # Insert the new elements at the specified index
+        schema_fields.insert(index, ("FURNISHED", pa.bool_()))
+        schema_fields.insert(index + 1, ("KITCHEN_EQUIPPED", pa.bool_()))
 
     # Check for missing columns and create empty ones with the appropriate data type
     for field_name, field_type in schema_fields:
