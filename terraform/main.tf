@@ -8,6 +8,9 @@ terraform {
     digitalocean = {
       source = "digitalocean/digitalocean"
     }
+    aws = {
+      source = "hashicorp/aws"
+    }
   }
 }
 
@@ -21,7 +24,12 @@ provider "digitalocean" {
   token = var.do_token
 }
 
-# Virtual machine
+provider "aws" {
+  region = var.aws_region
+}
+
+# Virtual machines
+# Digital Ocean Droplet
 resource "digitalocean_droplet" "idealista_vm" {
   name   = "idealista-pipeline-vm"
   size   = var.do_machine_type
@@ -38,6 +46,57 @@ resource "digitalocean_ssh_key" "idealista_vm_ssh_key" {
   public_key = file(var.vm_ssh_pub_key)
 }
 
+# AWS VMs
+resource "aws_instance" "idealista_vm_2" {
+  ami           = var.ami_id
+  instance_type = var.instance_type
+
+  key_name = aws_key_pair.idealista_vm_key.key_name
+
+  root_block_device {
+    volume_size = 20 # 30 GB of disk space
+  }
+
+  vpc_security_group_ids = [aws_security_group.allow_ssh.id]
+
+  depends_on = [
+    aws_key_pair.idealista_vm_key,
+    aws_security_group.allow_ssh,
+  ]
+  
+  tags = {
+    Name = "idealista-pipeline-vm-rent"
+  }
+}
+
+resource "aws_key_pair" "idealista_vm_key" {
+  key_name   = "idealista_vm_key"
+  public_key = file(var.vm_ssh_pub_key)
+}
+
+resource "aws_security_group" "allow_ssh" {
+  name        = "allow_ssh"
+  description = "Allow SSH inbound traffic"
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = var.ssh_cidr_blocks
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "allow_ssh"
+  }
+}
+
 # Data Lake Bucket
 # Ref: https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/storage_bucket
 resource "google_storage_bucket" "data-lake-idealista" {
@@ -50,6 +109,15 @@ resource "google_storage_bucket" "data-lake-idealista" {
 
   versioning {
     enabled = true
+  }
+
+  lifecycle_rule {
+    action {
+      type = "Delete"
+    }
+    condition {
+      age = 30
+    }
   }
 }
 
