@@ -2,13 +2,14 @@ import asyncio
 import random
 import time
 
-from data_processing.tasks import clean_scraped_data
-from flows.utils import chunks
 from prefect import flow
-from repositories.gcp.bigquery import load_data_from_gcs_to_bigquery
-from repositories.gcp.parquet import prepare_parquet_file
-from repositories.gcp.storage import save_and_upload_to_gcs
-from scrapers.tasks import scrape_properties_task, scrape_search_task
+
+from src.data_processing.tasks import clean_scraped_data
+from src.flows.utils import chunks
+from src.repositories.gcp.bigquery import load_data_from_gcs_to_bigquery
+from src.repositories.gcp.parquet import prepare_parquet_file
+from src.repositories.gcp.storage import save_and_upload_to_gcs
+from src.scrapers.tasks import scrape_properties_task, scrape_search_task
 
 
 @flow(log_prints=True)

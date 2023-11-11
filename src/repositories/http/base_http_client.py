@@ -3,7 +3,8 @@ import random
 from http import HTTPStatus
 
 import httpx
-from repositories.http.rate_limiter import RateLimiter
+
+from src.repositories.http.rate_limiter import RateLimiter
 
 
 class BaseHTTPClient:

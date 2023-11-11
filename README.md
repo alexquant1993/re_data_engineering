@@ -92,7 +92,7 @@ on windows_amd64
 - Check the VM instance IP address in the DO dashboard
 - Edit the config file in `~/.ssh/config` to add the VM instance:
 ```bash
-Host idealista_vm
+Host idealista_vm_{type_pipeline}
 	Hostname {vm_ip_address}
 	User ubuntu
     Port 22
@@ -154,12 +154,20 @@ conda init bash
 conda activate re-spain
 cd real_estate_spain
 pip install -r requirements.txt
+# Downgrade pydantic to make it compatible with prefect
+pip install pydantic==1.10.11
+```
+- Set the PYTHONPATH environment variable to include our working directory, in the .bashrc file:
+```bash
+nano ~/.bashrc
+export PYTHONPATH="${PYTHONPATH}:/home/aarroyo/real_estate_spain"
+source ~/.bashrc
 ```
 
 ## Prefect setup
 1. Run prefect as a (systemd service)[https://docs.prefect.io/orchestration/tutorial/overview.html#running-prefect-as-a-systemd-service].
     - Create a new systemd service unit file in the /etc/systemd/system/ directory: `sudo nano /etc/systemd/system/prefect-agent.service`
-    - Copy and paste the following configuration into the service file:
+    - Copy and paste the following configuration into the service file. Replace {type_pipeline} by `sale`, `rent` or `share`:
     ```bash
     [Unit]
     Description=Prefect Agent
@@ -168,7 +176,7 @@ pip install -r requirements.txt
     Type=simple
     User=aarroyo
     WorkingDirectory=/home/aarroyo/real_estate_spain
-    ExecStart=/home/aarroyo/anaconda3/envs/re-spain/bin/prefect agent start -q default
+    ExecStart=/home/aarroyo/anaconda3/envs/re-spain/bin/prefect agent start -q {type_deployment}
     Restart=always
 
     [Install]
@@ -187,18 +195,30 @@ pip install -r requirements.txt
     - Login to Google Cloud Platform with `gcloud auth login`
     - Export project ID value: `export PROJECT_ID="idealista-scraper-384619"`
     - Set project: `gcloud config set project $PROJECT_ID`
-    - Create a service account: `gcloud iam service-accounts create prefect-agent --display-name "Prefect Agent"`
+    - Export service account name: 
+        - Sale VM: `export SERVICE_ACC_NAME="prefect-agent-sale"`
+        - Rent VM: `export SERVICE_ACC_NAME="prefect-agent-rent"`
+    - Create a service account: `gcloud iam service-accounts create $SERVICE_ACC_NAME --display-name "Prefect Agent"`
     - Add GCS and Bigquery roles to the service account:
         - GCS: 
-            - `gcloud projects add-iam-policy-binding $PROJECT_ID --member serviceAccount:prefect-agent@$PROJECT_ID.iam.gserviceaccount.com --role roles/storage.admin`
-            - `gcloud projects add-iam-policy-binding $PROJECT_ID --member serviceAccount:prefect-agent@$PROJECT_ID.iam.gserviceaccount.com --role roles/storage.objectAdmin`
-        - Bigquery: `gcloud projects add-iam-policy-binding $PROJECT_ID --member serviceAccount:prefect-agent@$PROJECT_ID.iam.gserviceaccount.com --role roles/bigquery.admin`
-    - Download JSON credentials: `gcloud iam service-accounts keys create ~/.gcp/prefect-agent.json --iam-account=prefect-agent@$PROJECT_ID.iam.gserviceaccount.com`
+            - `gcloud projects add-iam-policy-binding $PROJECT_ID --member serviceAccount:$SERVICE_ACC_NAME@$PROJECT_ID.iam.gserviceaccount.com --role roles/storage.admin`
+            - `gcloud projects add-iam-policy-binding $PROJECT_ID --member serviceAccount:$SERVICE_ACC_NAME@$PROJECT_ID.iam.gserviceaccount.com --role roles/storage.objectAdmin`
+        - Bigquery: `gcloud projects add-iam-policy-binding $PROJECT_ID --member serviceAccount:$SERVICE_ACC_NAME@$PROJECT_ID.iam.gserviceaccount.com --role roles/bigquery.admin`
+    - Download JSON credentials: `gcloud iam service-accounts keys create ~/.gcp/prefect-agent.json --iam-account=$SERVICE_ACC_NAME@$PROJECT_ID.iam.gserviceaccount.com`
     - Login with service account: `gcloud auth activate-service-account --key-file ~/.gcp/prefect-agent.json`
 
 # Step 8: Run the pipelines in VM instance
 - Login to prefect cloud: `prefect cloud login -k {YOUR_API_KEY}`
-- Create deployment file: `prefect deployment build idealista_flow.py:idealista_to_gcp_pipeline -n madrid_sale_daily -o idealista-pipeline-daily.yaml`
+- Create deployment file
+```bash
+prefect deployment build idealista_flow.py:idealista_to_gcp_pipeline \
+-n rent_test \
+-t rent \
+-q rent \
+-o rent-test.yaml
+```
+
+: `prefect deployment build prefect_pipelines/idealista_flow.py:idealista_to_gcp_pipeline -n madrid_sale_daily -o idealista-pipeline-daily.yaml`
 - Deployment file customization:
     - Set up parameters according to your needs:
         - testing: true

@@ -4,11 +4,12 @@ from http import HTTPStatus
 from typing import List
 
 import httpx
-from models.property import Property
-from parsers.idealista_parser import IdealistaParser
-from repositories.http.base_http_client import BaseHTTPClient
-from repositories.http.random_headers import get_random_header
 from tqdm.asyncio import tqdm_asyncio
+
+from src.models.property import Property
+from src.parsers.idealista_parser import IdealistaParser
+from src.repositories.http.base_http_client import BaseHTTPClient
+from src.repositories.http.random_headers import get_random_header
 
 
 class IdealistaScraper:

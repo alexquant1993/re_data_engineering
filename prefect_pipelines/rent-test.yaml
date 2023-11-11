@@ -1,9 +1,10 @@
 ###
 ### A complete description of a Prefect Deployment for flow 'idealista-to-gcp-pipeline'
 ###
-name: madrid_sale_daily_testing
+name: rent_test
 description: |-
   Scrape idealista listings given search parameters and upload to GCS and BigQuery.
+
   Args:
       province: The province to search in Spain
       type_search: The type of search to perform (sale, rent or share)
@@ -12,30 +13,42 @@ description: |-
           - '48': last 48 hours
           - 'week': last week
           - 'month': last month
+
       bucket_name: The name of the GCS bucket to upload the data to
       dataset_id: The name of the BigQuery dataset to upload the data to
       credentials_path: The path to the GCS credentials
       zone: The zone to search in the province. These zones are defined in
       the idealista website. (default None = search in the whole province)
-      batch_size: The number of properties to scrape before uploading to GCS (default 30)
+      batch_size: The number of properties to scrape before uploading to GCS
+      (default 30)
+      max_execution_time: The maximum time to run the pipeline in seconds
+      (default 18 hours)
       testing: Whether to run the pipeline in testing mode (default False)
-version: 13d827b29bf2b9e5c1fa095ef2aef2f1
+version: a034b6df9b17f4c0c59447d6c09d8206
 # The work queue that will handle this deployment's runs
-work_queue_name: default
-work_pool_name: null
-tags: []
+work_queue_name: rent
+work_pool_name: default-agent-pool
+tags:
+- rent
 parameters:
   zone: madrid
   testing: true
   province: madrid
+  batch_size: 3
   dataset_id: idealista_listings
   bucket_name: idealista_data_lake_idealista-scraper-384619
   time_period: 24
-  type_search: sale
+  type_search: rent
   credentials_path: ~/.gcp/prefect-agent.json
 schedule: null
-is_schedule_active: null
+is_schedule_active: false
 infra_overrides: {}
+
+###
+### DO NOT EDIT BELOW THIS LINE
+###
+flow_name: idealista-to-gcp-pipeline
+manifest_path: null
 infrastructure:
   type: process
   env: {}
@@ -44,17 +57,14 @@ infrastructure:
   command: null
   stream_output: true
   working_dir: null
+  _block_document_id: be5053d5-213f-4180-89c4-e93d52365f67
+  _block_document_name: anonymous-93689eb8-1b7e-40f1-bd3f-a08e91ec5292
+  _is_anonymous: true
   block_type_slug: process
   _block_type_slug: process
-
-###
-### DO NOT EDIT BELOW THIS LINE
-###
-flow_name: idealista-to-gcp-pipeline
-manifest_path: null
 storage: null
-path: /home/aarroyo/real_estate_spain/prefect_pipelines
-entrypoint: idealista_flow.py:idealista_to_gcp_pipeline
+path: /home/aarroyo/real_estate_spain
+entrypoint: src/flows/idealista_flow.py:idealista_to_gcp_pipeline
 parameter_openapi_schema:
   title: Parameters
   type: object
@@ -101,16 +111,21 @@ parameter_openapi_schema:
       type: string
     batch_size:
       title: batch_size
-      description: The number of properties to scrape before uploading to GCS (default
-        30)
+      description: The number of properties to scrape before uploading to GCS
       default: 30
       position: 7
+      type: integer
+    max_execution_time:
+      title: max_execution_time
+      description: The maximum time to run the pipeline in seconds
+      default: 64800
+      position: 8
       type: integer
     testing:
       title: testing
       description: Whether to run the pipeline in testing mode (default False)
       default: false
-      position: 8
+      position: 9
       type: boolean
   required:
   - province
@@ -120,4 +135,4 @@ parameter_openapi_schema:
   - dataset_id
   - credentials_path
   definitions: null
-timestamp: '2023-05-08T21:52:16.634993+00:00'
+timestamp: '2023-11-11T04:47:23.701858+00:00'

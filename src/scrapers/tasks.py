@@ -2,8 +2,9 @@ from dataclasses import asdict
 from typing import Any, Dict, List
 
 from prefect import task
-from scrapers.idealista_scraper import IdealistaScraper
-from scrapers.utils import flatten_dict
+
+from src.scrapers.idealista_scraper import IdealistaScraper
+from src.scrapers.utils import flatten_dict
 
 
 @task(retries=3, log_prints=True)

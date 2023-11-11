@@ -5,9 +5,10 @@ from urllib.parse import urljoin
 
 import httpx
 from bs4 import BeautifulSoup
-from models.property import Property
-from parsers.base_parser import BaseParser
-from parsers.helpers import get_features, get_image_data, get_images, get_plans
+
+from src.models.property import Property
+from src.parsers.base_parser import BaseParser
+from src.parsers.helpers import get_features, get_image_data, get_images, get_plans
 
 
 class IdealistaParser(BaseParser):
