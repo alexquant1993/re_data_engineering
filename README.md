@@ -209,34 +209,30 @@ source ~/.bashrc
 
 # Step 8: Run the pipelines in VM instance
 - Login to prefect cloud: `prefect cloud login -k {YOUR_API_KEY}`
-- Create deployment file
+- Create deployment file, for instance for the rent pipeline you will have:
 ```bash
-prefect deployment build idealista_flow.py:idealista_to_gcp_pipeline \
--n rent_test \
+export PIPELINE="rent"
+prefect deployment build src/flows/idealista_flow.py:idealista_to_gcp_pipeline \
+-n madrid_${PIPELINE}_daily \
 -t rent \
 -q rent \
--o rent-test.yaml
+-o prefect_pipelines/madrid_${PIPELINE}_daily.yaml
 ```
-
-: `prefect deployment build prefect_pipelines/idealista_flow.py:idealista_to_gcp_pipeline -n madrid_sale_daily -o idealista-pipeline-daily.yaml`
 - Deployment file customization:
     - Set up parameters according to your needs:
-        - testing: true
+        - testing: false
         - province: madrid
         - bucket_name: idealista_data_lake_idealista-scraper-384619
         - time_period: 24
-        - type_search: sale
+        - type_search: rent
         - credentials_path: ~/.gcp/prefect-agent.json
-    - Set up the schedule to run the pipeline every day at 2:00 AM:
-        - cron: 0 2 * * *
+    - Set up the schedule to run the pipeline every day at 7:00 AM:
+        - cron: 0 7 * * *
         - timezone: Europe/Madrid
         - day_or: true
-- Apply deployment: `prefect deployment apply idealista-pipeline-daily.yaml`
-- Run flow: `prefect deployment run "idealista-to-gcp-pipeline/madrid_sale_daily"`
-- Create as well a testing deployment: 
-    - Create yaml file: `prefect deployment build idealista_flow.py:idealista_to_gcp_pipeline -n madrid_sale_daily_testing -o idealista-pipeline-daily-testing.yaml`
-    - Apply deployment: `prefect deployment apply idealista-pipeline-daily-testing.yaml`
-    - Run flow: `prefect deployment run "idealista-to-gcp-pipeline/madrid_sale_daily_testing"`
+- Apply deployment: `prefect deployment apply prefect_pipelines/madrid_rent_daily.yaml`
+- Run flow: `prefect deployment run "idealista-to-gcp-pipeline/madrid_rent_daily"`
+- Another testing deployment can be created as well, following the steps above.
 - Implement an automation feature in Prefect Cloud that enables the automatic dispatch of emails triggered by specific flow run events. These events should include when a flow run is completed, cancelled, or has failed.
 > Disable HTTP2 for prefect, [to avoid httpx.LocalProtocolError](https://github.com/PrefectHQ/prefect/issues/7442): `prefect config set PREFECT_API_ENABLE_HTTP2=false`
 
