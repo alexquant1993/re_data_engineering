@@ -1,4 +1,5 @@
 import asyncio
+import math
 import random
 import time
 
@@ -86,7 +87,7 @@ async def idealista_to_gcp_pipeline(
 
     # Scrape and process property URLs
     property_urls = await scrape_search_task(url, paginate=not testing)
-    n_batches = len(property_urls) // batch_size
+    n_batches = math.ceil(len(property_urls) / batch_size)
     processed_properties = 0
     for i, property_urls_batch in enumerate(chunks(property_urls, batch_size)):
         if time.time() - start_time > max_execution_time:  # 18 hours
