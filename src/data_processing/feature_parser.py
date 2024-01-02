@@ -1,12 +1,36 @@
 import re
 from typing import Dict, List
 
+import numpy as np
+
 
 def split_basic_features(features: List[str]) -> Dict[str, str]:
     """Split basic listing features into a dictionary of key-value pairs"""
     dict_out = {}
-    copy_features = features.copy()
+    # Initialize all possible keys with default values
+    dict_out["BUILT_AREA"] = np.nan
+    dict_out["USEFUL_AREA"] = np.nan
+    dict_out["LOT_AREA"] = np.nan
+    dict_out["NUM_BEDROOMS"] = np.nan
+    dict_out["NUM_BATHROOMS"] = np.nan
+    dict_out["CONDITION"] = None
+    dict_out["HEATING"] = None
+    dict_out["BUILTIN_WARDROBE"] = False
+    dict_out["FLAG_PARKING"] = False
+    dict_out["PARKING_INCLUDED"] = False
+    dict_out["PARKING_PRICE"] = np.nan
+    dict_out["TERRACE"] = False
+    dict_out["STORAGE_ROOM"] = False
+    dict_out["BALCONY"] = False
+    dict_out["FURNISHED"] = None
+    dict_out["KITCHEN_EQUIPPED"] = None
+    dict_out["CARDINAL_ORIENTATION"] = None
+    dict_out["ACCESIBILITY_FLAG"] = False
+    dict_out["YEAR_BUILT"] = np.nan
+    dict_out["NUM_FLOORS"] = np.nan
 
+    # Process each feature and update the dictionary
+    copy_features = features.copy()
     for feature in copy_features:
         lower_feature = feature.lower()
 
@@ -111,14 +135,6 @@ def split_basic_features(features: List[str]) -> Dict[str, str]:
                 dict_out["KITCHEN_EQUIPPED"] = False
             features.remove(feature)
 
-    # Set default values for keys that were not found in the features
-    dict_out.setdefault("FLAG_PARKING", False)
-    dict_out.setdefault("BUILTIN_WARDROBE", False)
-    dict_out.setdefault("STORAGE_ROOM", False)
-    dict_out.setdefault("ACCESIBILITY_FLAG", False)
-    dict_out.setdefault("TERRACE", False)
-    dict_out.setdefault("BALCONY", False)
-
     if features:
         print(f"WARNING: The following features were not parsed: {features}")
 
@@ -128,8 +144,14 @@ def split_basic_features(features: List[str]) -> Dict[str, str]:
 def split_building_features(features: List[str]) -> Dict[str, str]:
     """Split building features into a dictionary of key-value pairs"""
     dict_out = {}
-    copy_features = features.copy()
 
+    # Initialize all possible keys with default values
+    dict_out["FLOOR"] = np.nan
+    dict_out["PROPERTY_ORIENTATION"] = None
+    dict_out["ELEVATOR"] = None
+
+    # Process each feature and update the dictionary
+    copy_features = features.copy()
     for feature in copy_features:
         lower_feature = feature.lower()
         if any(
@@ -169,8 +191,13 @@ def split_building_features(features: List[str]) -> Dict[str, str]:
 def split_amenity_features(features: List[str]) -> Dict[str, str]:
     """Split amenity features into a dictionary of key-value pairs"""
     dict_out = {}
-    copy_features = features.copy()
+    # Initialize all possible keys with default values
+    dict_out["AIR_CONDITIONING"] = False
+    dict_out["POOL"] = False
+    dict_out["GREEN_AREAS"] = False
 
+    # Process each feature and update the dictionary
+    copy_features = features.copy()
     for feature in copy_features:
         lower_feature = feature.lower()
         if "aire acondicionado" in lower_feature:
@@ -197,8 +224,16 @@ def split_amenity_features(features: List[str]) -> Dict[str, str]:
 def split_energy_features(features: List[str]) -> Dict[str, str]:
     """Split energy features into a dictionary of key-value pairs"""
     dict_out = {}
-    copy_features = features.copy()
 
+    # Initialize all possible keys with default values
+    dict_out["STATUS_EPC"] = None
+    dict_out["ENERGY_CONSUMPTION"] = np.nan
+    dict_out["ENERGY_CONSUMPTION_LABEL"] = None
+    dict_out["ENERGY_EMISSIONS"] = np.nan
+    dict_out["ENERGY_EMISSIONS_LABEL"] = None
+
+    # Process each feature and update the dictionary
+    copy_features = features.copy()
     for feature in copy_features:
         lower_feature = feature.lower()
         if "consumo" not in lower_feature and "emisiones" not in lower_feature:
