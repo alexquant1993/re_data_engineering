@@ -24,12 +24,12 @@ description: |-
       max_execution_time: The maximum time to run the pipeline in seconds
       (default 18 hours)
       testing: Whether to run the pipeline in testing mode (default False)
-version: 85a06517246b8eee858f540ff1393ba9
+version: c2d87aa6d096aeeaa96352a1a0ca1fd6
 # The work queue that will handle this deployment's runs
 work_queue_name: rent
 work_pool_name: default-agent-pool
 tags:
-  - rent
+- rent
 parameters:
   zone: madrid
   testing: false
@@ -45,6 +45,12 @@ schedule:
   day_or: true
 is_schedule_active: true
 infra_overrides: {}
+
+###
+### DO NOT EDIT BELOW THIS LINE
+###
+flow_name: idealista-to-gcp-pipeline
+manifest_path: null
 infrastructure:
   type: process
   env: {}
@@ -53,14 +59,11 @@ infrastructure:
   command: null
   stream_output: true
   working_dir: null
+  _block_document_id: 45cd9ec0-fb60-40c3-96f4-ec0aa71e69eb
+  _block_document_name: anonymous-8c24c835-76ea-4c27-b119-3d74eeedfb8e
+  _is_anonymous: true
   block_type_slug: process
   _block_type_slug: process
-
-###
-### DO NOT EDIT BELOW THIS LINE
-###
-flow_name: idealista-to-gcp-pipeline
-manifest_path: null
 storage: null
 path: /home/aarroyo/real_estate_spain
 entrypoint: src/flows/idealista_flow.py:idealista_to_gcp_pipeline
@@ -127,11 +130,11 @@ parameter_openapi_schema:
       position: 9
       type: boolean
   required:
-    - province
-    - type_search
-    - time_period
-    - bucket_name
-    - dataset_id
-    - credentials_path
+  - province
+  - type_search
+  - time_period
+  - bucket_name
+  - dataset_id
+  - credentials_path
   definitions: null
-timestamp: "2023-11-11T05:16:09.936498+00:00"
+timestamp: '2024-01-02T17:42:59.922415+00:00'
