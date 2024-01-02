@@ -5,8 +5,7 @@ from google.cloud import bigquery
 from prefect import task
 
 
-@task(retries=3, log_prints=True)
-def load_data_from_gcs_to_bigquery(
+def _load_data_from_gcs_to_bigquery(
     bucket_name, parquet_file_path, dataset_id, table_id, credentials_path
 ):
     """
@@ -47,3 +46,25 @@ def load_data_from_gcs_to_bigquery(
     load_job.result()
 
     print(f"Loaded {load_job.output_rows} rows to {dataset_id}.{table_id}.")
+
+
+@task(retries=3, log_prints=True)
+def load_data_from_gcs_to_bigquery(
+    bucket_name, parquet_file_path, dataset_id, table_id, credentials_path
+):
+    """
+    Task to load data from a GCS Parquet file into a BigQuery table.
+
+    This function is a Prefect task that wraps the private function _load_data_from_gcs_to_bigquery.
+    It is designed to be used in a Prefect flow and will retry 3 times if it fails.
+
+    Args:
+        bucket_name (str): The name of the GCS bucket containing the Parquet file.
+        parquet_file_path (str): The path to the Parquet file within the GCS bucket.
+        dataset_id (str): The ID of the BigQuery dataset.
+        table_id (str): The ID of the BigQuery table.
+        credentials_path (str): The path to the GCP credentials file.
+    """
+    return _load_data_from_gcs_to_bigquery(
+        bucket_name, parquet_file_path, dataset_id, table_id, credentials_path
+    )

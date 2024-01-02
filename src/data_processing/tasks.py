@@ -11,14 +11,22 @@ from src.data_processing.feature_parser import (
     split_energy_features,
 )
 from src.data_processing.geocoding import get_geocode_details_batch
-from src.data_processing.utils import get_features_asdf, parse_date_in_column
+from src.data_processing.utils import parse_date_in_column, process_features
 
 
-@task(retries=3, log_prints=True)
-async def clean_scraped_data(
+async def _clean_scraped_data(
     property_data: List[Dict[str, Any]], type_search: str
 ) -> pd.DataFrame:
-    """Clean the data from the scraped properties."""
+    """
+    Clean the data from the scraped properties.
+
+    Args:
+        property_data (List[Dict[str, Any]]): The scraped property data to clean.
+        type_search (str): The type of search ("sale" or "rent").
+
+    Returns:
+        pd.DataFrame: The cleaned property data.
+    """
     print("Cleaning data...")
     df = pd.DataFrame(property_data)
 
@@ -50,20 +58,20 @@ async def clean_scraped_data(
     df_out["POSTER_TYPE"] = df["poster_type"]
     df_out["POSTER_NAME"] = df["poster_name"]
     # Get basic listing features
-    df_basic_features = get_features_asdf(
-        df["features_Características básicas"], split_basic_features
+    df_basic_features = process_features(
+        df, "features_Características básicas", split_basic_features
     )
     # Get building listing features
-    df_building_features = get_features_asdf(
-        df["features_Edificio"], split_building_features
+    df_building_features = process_features(
+        df, "features_Edificio", split_building_features
     )
     # Get amenities listing features
-    df_amenities_features = get_features_asdf(
-        df["features_Equipamiento"], split_amenity_features
+    df_amenities_features = process_features(
+        df, "features_Equipamiento", split_amenity_features
     )
     # Get energy listing features
-    df_energy_features = get_features_asdf(
-        df["features_Certificado energético"], split_energy_features
+    df_energy_features = process_features(
+        df, "features_Certificado energético", split_energy_features
     )
     # Concatenate all features
     df_out = pd.concat(
@@ -84,3 +92,23 @@ async def clean_scraped_data(
     # df_out[image_cols] = df[image_cols]
 
     return df_out
+
+
+@task(retries=3, log_prints=True)
+async def clean_scraped_data(
+    property_data: List[Dict[str, Any]], type_search: str
+) -> pd.DataFrame:
+    """
+    Task to clean the data from the scraped properties.
+
+    This function is a Prefect task that wraps the private function _clean_scraped_data.
+    It is designed to be used in a Prefect flow and will retry 3 times if it fails.
+
+    Args:
+        property_data (List[Dict[str, Any]]): The scraped property data to clean.
+        type_search (str): The type of search ("sale" or "rent").
+
+    Returns:
+        pd.DataFrame: The cleaned property data.
+    """
+    return await _clean_scraped_data(property_data, type_search)

@@ -8,14 +8,26 @@ from google.cloud import storage
 from prefect import task
 
 
-@task(retries=3, log_prints=True)
-def save_and_upload_to_gcs(
+def _save_and_upload_to_gcs(
     table: pa.table,
     bucket_name: str,
     to_path: str,
     credentials_path: str,
     batch_number: int,
 ):
+    """
+    Save a PyArrow table as a Parquet file and upload it to a GCS bucket.
+
+    Args:
+        table (pa.Table): The PyArrow table to save and upload.
+        bucket_name (str): The name of the GCS bucket to upload to.
+        to_path (str): The path in the GCS bucket to upload the file to.
+        credentials_path (str): The path to the GCP credentials file.
+        batch_number (int): The batch number to append to the file name.
+
+    Returns:
+        str: The full path of the uploaded file in the GCS bucket.
+    """
     # Save the pyarrow Table as a Parquet file
     with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as temp_file:
         pq.write_table(table, temp_file.name, compression="snappy")
@@ -41,3 +53,32 @@ def save_and_upload_to_gcs(
         os.remove(temp_file_path)
 
     return full_path
+
+
+@task(retries=3, log_prints=True)
+def save_and_upload_to_gcs(
+    table: pa.table,
+    bucket_name: str,
+    to_path: str,
+    credentials_path: str,
+    batch_number: int,
+):
+    """
+    Task to save a PyArrow table as a Parquet file and upload it to a GCS bucket.
+
+    This function is a Prefect task that wraps the private function _save_and_upload_to_gcs.
+    It is designed to be used in a Prefect flow and will retry 3 times if it fails.
+
+    Args:
+        table (pa.Table): The PyArrow table to save and upload.
+        bucket_name (str): The name of the GCS bucket to upload to.
+        to_path (str): The path in the GCS bucket to upload the file to.
+        credentials_path (str): The path to the GCP credentials file.
+        batch_number (int): The batch number to append to the file name.
+
+    Returns:
+        str: The full path of the uploaded file in the GCS bucket.
+    """
+    return _save_and_upload_to_gcs(
+        table, bucket_name, to_path, credentials_path, batch_number
+    )

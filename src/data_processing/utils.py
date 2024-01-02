@@ -49,3 +49,23 @@ def get_features_asdf(pds: pd.Series, split_function) -> pd.DataFrame:
         df_features.append(split_function(feature))
     df_features = pd.DataFrame(df_features)
     return df_features
+
+
+def process_features(df, column_name, split_function):
+    """
+    Apply a function to a DataFrame column or an empty Series if the column doesn't exist.
+
+    Args:
+        df (pd.DataFrame): DataFrame to process.
+        column_name (str): Column to apply the function to.
+        split_function (function): Function to apply.
+
+    Returns:
+        pd.Series: Result of applying the function.
+    """
+    if column_name in df.columns:
+        return get_features_asdf(df[column_name], split_function)
+    else:
+        # Create an empty pandas Series with the same length as df
+        empty_series = pd.Series([[] for _ in range(len(df))])
+        return get_features_asdf(empty_series, split_function)

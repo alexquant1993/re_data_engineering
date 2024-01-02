@@ -3,9 +3,20 @@ import pyarrow as pa
 from prefect import task
 
 
-@task(log_prints=True)
-def prepare_parquet_file(df: pd.DataFrame, type_search: str) -> pa.Table:
-    """Prepare a Pandas DataFrame for writing to Parquet"""
+def _prepare_parquet_file(df: pd.DataFrame, type_search: str) -> pa.Table:
+    """
+    Task to clean the data from the scraped properties.
+
+    This function is a Prefect task that wraps the private function _clean_scraped_data.
+    It is designed to be used in a Prefect flow and will retry 3 times if it fails.
+
+    Args:
+        property_data (List[Dict[str, Any]]): The scraped property data to clean.
+        type_search (str): The type of search ("sale" or "rent").
+
+    Returns:
+        pd.DataFrame: The cleaned property data.
+    """
     schema_fields = [
         ("ID_LISTING", pa.string()),
         ("URL", pa.string()),
@@ -84,3 +95,21 @@ def prepare_parquet_file(df: pd.DataFrame, type_search: str) -> pa.Table:
     table = pa.Table.from_pandas(df, schema=schema)
 
     return table
+
+
+@task(log_prints=True)
+def prepare_parquet_file(df: pd.DataFrame, type_search: str) -> pa.Table:
+    """
+    Task to prepare a Pandas DataFrame for writing to a Parquet file.
+
+    This function is a Prefect task that wraps the private function _prepare_parquet_file.
+    It is designed to be used in a Prefect flow.
+
+    Args:
+        df (pd.DataFrame): The DataFrame to prepare.
+        type_search (str): The type of search ("sale" or "rent").
+
+    Returns:
+        pa.Table: The prepared PyArrow table.
+    """
+    return _prepare_parquet_file(df, type_search)
