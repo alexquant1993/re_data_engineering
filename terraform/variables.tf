@@ -1,3 +1,4 @@
+# GCP variables
 variable "credentials" {
   description = "The GCP credentials JSON file path."
   type        = string
@@ -64,4 +65,28 @@ variable "bq_dataset" {
   description = "BigQuery Dataset that raw data (from GCS) will be written to"
   type = string
   default = "idealista_listings"
+}
+
+# AWS variables
+variable "aws_region" {
+  description = "AWS region to launch servers."
+  default     = "eu-south-2"
+}
+
+variable "ami_id" {
+  description = "The ID of the AMI to use for the instance"
+  type        = string
+  default     = "ami-056f255d137f5a970"
+}
+
+variable "instance_type" {
+  description = "The size of instance to launch."
+  type        = string
+  default     = "t4g.small"
+}
+
+variable "ssh_cidr_blocks" {
+  description = "The CIDR blocks that are allowed to access the instance over SSH."
+  type        = list(string)
+  default     = ["0.0.0.0/0"]  # Be cautious with this default value; it allows SSH access from any IP.
 }

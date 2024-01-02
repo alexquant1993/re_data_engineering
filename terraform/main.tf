@@ -5,6 +5,9 @@ terraform {
     google = {
       source  = "hashicorp/google"
     }
+    aws = {
+      source = "hashicorp/aws"
+    }
   }
 }
 
@@ -14,32 +17,81 @@ provider "google" {
   credentials = file(var.credentials)
 }
 
-# Virtual machine
-resource "google_compute_instance" "idealista_vm" {
-  name         = "idealista-pipeline-vm"
-  machine_type = var.machine_type
-  zone         = var.zone
+provider "aws" {
+  region = var.aws_region
+}
 
-  boot_disk {
-    initialize_params {
-      size = var.boot_disk_size
-      image = var.vm_image
-    }
+# AWS VMs
+resource "aws_instance" "idealista_vm_1" {
+  ami           = var.ami_id
+  instance_type = var.instance_type
+
+  key_name = aws_key_pair.idealista_vm_key.key_name
+
+  root_block_device {
+    volume_size = 20
   }
 
-  network_interface {
-    network = "default"
-    subnetwork = "default"
-    access_config {
-      // Ephemeral IP
-    }
+  vpc_security_group_ids = [aws_security_group.allow_ssh.id]
+
+  depends_on = [
+    aws_key_pair.idealista_vm_key,
+    aws_security_group.allow_ssh,
+  ]
+  
+  tags = {
+    Name = "idealista-pipeline-vm-sale"
+  }
+}
+
+resource "aws_instance" "idealista_vm_2" {
+  ami           = var.ami_id
+  instance_type = var.instance_type
+
+  key_name = aws_key_pair.idealista_vm_key.key_name
+
+  root_block_device {
+    volume_size = 20
   }
 
-  metadata = {
-    ssh-keys = "${var.vm_ssh_user}:${file(var.vm_ssh_pub_key)}"
+  vpc_security_group_ids = [aws_security_group.allow_ssh.id]
+
+  depends_on = [
+    aws_key_pair.idealista_vm_key,
+    aws_security_group.allow_ssh,
+  ]
+  
+  tags = {
+    Name = "idealista-pipeline-vm-rent"
+  }
+}
+
+resource "aws_key_pair" "idealista_vm_key" {
+  key_name   = "idealista_vm_key"
+  public_key = file(var.vm_ssh_pub_key)
+}
+
+resource "aws_security_group" "allow_ssh" {
+  name        = "allow_ssh"
+  description = "Allow SSH inbound traffic"
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = var.ssh_cidr_blocks
   }
 
-  tags = ["terraform", "ubuntu"]
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "allow_ssh"
+  }
 }
 
 # Data Lake Bucket
@@ -54,6 +106,15 @@ resource "google_storage_bucket" "data-lake-idealista" {
 
   versioning {
     enabled = true
+  }
+
+  lifecycle_rule {
+    action {
+      type = "Delete"
+    }
+    condition {
+      age = 30
+    }
   }
 }
 
