@@ -1,0 +1,134 @@
+###
+### A complete description of a Prefect Deployment for flow 'idealista-to-gcp-pipeline'
+###
+name: madrid_sale_daily
+description: |-
+  Scrape idealista listings given search parameters and upload to GCS and BigQuery.
+
+  Args:
+      province: The province to search in Spain
+      type_search: The type of search to perform (sale, rent or share)
+      time_period: The time period to search for.
+          - '24': last 24 hours
+          - '48': last 48 hours
+          - 'week': last week
+          - 'month': last month
+
+      bucket_name: The name of the GCS bucket to upload the data to
+      dataset_id: The name of the BigQuery dataset to upload the data to
+      credentials_path: The path to the GCS credentials
+      zone: The zone to search in the province. These zones are defined in
+      the idealista website. (default None = search in the whole province)
+      batch_size: The number of properties to scrape before uploading to GCS
+      (default 30)
+      max_execution_time: The maximum time to run the pipeline in seconds
+      (default 18 hours)
+      testing: Whether to run the pipeline in testing mode (default False)
+version: c2d87aa6d096aeeaa96352a1a0ca1fd6
+# The work queue that will handle this deployment's runs
+work_queue_name: sale
+work_pool_name: null
+tags:
+- sale
+parameters:
+  zone: madrid
+  testing: true
+  province: madrid
+  dataset_id: idealista_listings
+  bucket_name: idealista_data_lake_idealista-scraper-384619
+  time_period: 24
+  type_search: sale
+  credentials_path: ~/.gcp/prefect-agent.json
+schedule: null
+is_schedule_active: null
+infra_overrides: {}
+infrastructure:
+  type: process
+  env: {}
+  labels: {}
+  name: null
+  command: null
+  stream_output: true
+  working_dir: null
+  block_type_slug: process
+  _block_type_slug: process
+
+###
+### DO NOT EDIT BELOW THIS LINE
+###
+flow_name: idealista-to-gcp-pipeline
+manifest_path: null
+storage: null
+path: /home/aarroyo/re_data_engineering
+entrypoint: src/flows/idealista_flow.py:idealista_to_gcp_pipeline
+parameter_openapi_schema:
+  title: Parameters
+  type: object
+  properties:
+    province:
+      title: province
+      description: The province to search in Spain
+      position: 0
+      type: string
+    type_search:
+      title: type_search
+      description: The type of search to perform (sale, rent or share)
+      position: 1
+      type: string
+    time_period:
+      title: time_period
+      description: |-
+        The time period to search for.
+        - '24': last 24 hours
+        - '48': last 48 hours
+        - 'week': last week
+        - 'month': last month
+      position: 2
+      type: string
+    bucket_name:
+      title: bucket_name
+      description: The name of the GCS bucket to upload the data to
+      position: 3
+      type: string
+    dataset_id:
+      title: dataset_id
+      description: The name of the BigQuery dataset to upload the data to
+      position: 4
+      type: string
+    credentials_path:
+      title: credentials_path
+      description: The path to the GCS credentials
+      position: 5
+      type: string
+    zone:
+      title: zone
+      description: The zone to search in the province. These zones are defined in
+      position: 6
+      type: string
+    batch_size:
+      title: batch_size
+      description: The number of properties to scrape before uploading to GCS
+      default: 30
+      position: 7
+      type: integer
+    max_execution_time:
+      title: max_execution_time
+      description: The maximum time to run the pipeline in seconds
+      default: 64800
+      position: 8
+      type: integer
+    testing:
+      title: testing
+      description: Whether to run the pipeline in testing mode (default False)
+      default: false
+      position: 9
+      type: boolean
+  required:
+  - province
+  - type_search
+  - time_period
+  - bucket_name
+  - dataset_id
+  - credentials_path
+  definitions: null
+timestamp: '2024-01-02T17:20:46.950208+00:00'

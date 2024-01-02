@@ -153,10 +153,9 @@ pipx install poetry
 
 ## Use poetry to install packages
 - Move to the project directory: `cd re_data_engineering`
-- Install the packages: `poetry install`
+- Install the packages: `poetry install --no-root`
 - Activate the virtual environment: `poetry shell`
 - Check the packages installed: `poetry show`
-
 
 ## Prefect setup
 1. Run prefect as a (systemd service)[https://docs.prefect.io/orchestration/tutorial/overview.html#running-prefect-as-a-systemd-service].
@@ -169,8 +168,8 @@ pipx install poetry
     [Service]
     Type=simple
     User=aarroyo
-    WorkingDirectory=/home/aarroyo/real_estate_spain
-    ExecStart=/home/aarroyo/anaconda3/envs/re-spain/bin/prefect agent start -q {type_deployment}
+    WorkingDirectory=/home/aarroyo/re_data_engineering
+    ExecStart=/home/aarroyo/.local/bin/poetry run prefect agent start -q {type_pipeline}
     Restart=always
 
     [Install]
@@ -186,6 +185,7 @@ pipx install poetry
 
 2. Repeat steps in section 3 in order to connect to Google Cloud with a service account:
     - In a Digital Ocean Droplet, you have to install the Google Cloud SDK: `sudo snap install google-cloud-sdk --classic`
+    - Check for system updates: `sudo apt update` & `sudo apt upgrade`
     - Login to Google Cloud Platform with `gcloud auth login`
     - Export project ID value: `export PROJECT_ID="idealista-scraper-384619"`
     - Set project: `gcloud config set project $PROJECT_ID`
