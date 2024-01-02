@@ -5,9 +5,6 @@ terraform {
     google = {
       source  = "hashicorp/google"
     }
-    digitalocean = {
-      source = "digitalocean/digitalocean"
-    }
     aws = {
       source = "hashicorp/aws"
     }
@@ -20,33 +17,33 @@ provider "google" {
   credentials = file(var.credentials)
 }
 
-provider "digitalocean" {
-  token = var.do_token
-}
-
 provider "aws" {
   region = var.aws_region
 }
 
-# Virtual machines
-# Digital Ocean Droplet
-resource "digitalocean_droplet" "idealista_vm" {
-  name   = "idealista-pipeline-vm"
-  size   = var.do_machine_type
-  image  = var.do_vm_image
-  region = var.do_region
-
-  ssh_keys = [
-    digitalocean_ssh_key.idealista_vm_ssh_key.id
-  ]
-}
-
-resource "digitalocean_ssh_key" "idealista_vm_ssh_key" {
-  name       = "idealista_vm_ssh_key"
-  public_key = file(var.vm_ssh_pub_key)
-}
-
 # AWS VMs
+resource "aws_instance" "idealista_vm_1" {
+  ami           = var.ami_id
+  instance_type = var.instance_type
+
+  key_name = aws_key_pair.idealista_vm_key.key_name
+
+  root_block_device {
+    volume_size = 20
+  }
+
+  vpc_security_group_ids = [aws_security_group.allow_ssh.id]
+
+  depends_on = [
+    aws_key_pair.idealista_vm_key,
+    aws_security_group.allow_ssh,
+  ]
+  
+  tags = {
+    Name = "idealista-pipeline-vm-sale"
+  }
+}
+
 resource "aws_instance" "idealista_vm_2" {
   ami           = var.ami_id
   instance_type = var.instance_type

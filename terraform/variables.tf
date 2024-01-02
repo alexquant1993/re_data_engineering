@@ -67,30 +67,6 @@ variable "bq_dataset" {
   default = "idealista_listings"
 }
 
-# DigitalOcean variables
-variable "do_token" {
-  description = "The DigitalOcean API token."
-  type        = string
-}
-
-variable "do_region" {
-  description = "The DigitalOcean region."
-  type        = string
-  default     = "fra1"
-}
-
-variable "do_machine_type" {
-  description = "The machine type for the Prefect VM in DigitalOcean."
-  type        = string
-  default     = "s-2vcpu-4gb"
-}
-
-variable "do_vm_image" {
-  description = "The image for the Prefect VM in DigitalOcean."
-  type        = string
-  default     = "ubuntu-20-04-x64"
-}
-
 # AWS variables
 variable "aws_region" {
   description = "AWS region to launch servers."

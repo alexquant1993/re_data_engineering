@@ -77,7 +77,6 @@ on windows_amd64
 - Initialize Terraform: `terraform init`
 - Terraform validate: `terraform validate`
 - Terraform plan: `terraform plan -var "credentials=~/.gcp/terraform.json" -var "vm_ssh_user=aarroyo" -var "vm_ssh_pub_key=~/.ssh/idealista_vm.pub" -out=tfplan`
-    - Enter DigitalOcean token - DO is used given that offers cheaper VMs than GCP. The token can be obtained from the DO dashboard.
     - Enter GCP credentials JSON file path: `~/.gcp/terraform.json`
     - Enter path to the SSH public key for VM: `~/.ssh/idealista_vm.pub`
         - Previously generate a SSH key pair: `ssh-keygen`
@@ -89,7 +88,7 @@ on windows_amd64
 
 # Step 6: Connect to VM instance
 - Install Remote SSH extension in VSCode
-- Check the VM instance IP address in the DO dashboard
+- Check the VM instance IP address in the AWS dashboard
 - Edit the config file in `~/.ssh/config` to add the VM instance:
 ```bash
 Host idealista_vm_{type_pipeline}
@@ -111,9 +110,10 @@ chmod 600 .ssh/authorized_keys
 nano .ssh/authorized_keys
 # Paste public key idealista_vm.pub here and save.
 ```
-- Now you will be able to connect to the VM instance using the `aarroyo` user. Change the config file accordingly.
+- Now you will be able to connect to the VM instance using the `aarroyo` user. Change the config file to connect to the VM instance using the `aarroyo` user.
 
 # Step 7: Install packages and software in VM instance
+## Install packages
 - Check CPU and disk space information: `lscpu` and `df -h`
 - Install and update packages:
 ```bash
@@ -122,20 +122,24 @@ sudo apt-get upgrade -y
 sudo apt-get install bzip2 libxml2-dev
 # Install the required language pack
 sudo apt-get install language-pack-es-base
+# Install pip
+sudo apt install python3-pip
+# Install venv for Python
+sudo apt install python3-venv -y
 ```
 
-> The anaconda URL is for ARM64 architecture. If you are using a different architecture, check the [Anaconda website](https://www.anaconda.com/products/individual) to get the correct URL.
-
-- Install Anaconda:
+## Install Poetry
+- Install pipx and poetry for dependency management:
 ```bash
-wget https://repo.anaconda.com/archive/Anaconda3-2023.09-0-Linux-aarch64.sh -O ~/anaconda.sh
-bash ~/anaconda.sh -b -p $HOME/anaconda3
-echo 'export PATH="$HOME/anaconda3/bin:$PATH"' >> ~/.bashrc
+python3 -m pip install --user pipx
+python3 -m pipx ensurepath
+# Close and reopen your terminal
 source ~/.bashrc
-rm -f ~/anaconda.sh
+pipx install poetry
 ```
-> To fix the SSH warning after destroying and recreating a VM instance with Terraform, remove the old key fingerprint from the known_hosts file and try to connect again to the VM.
+- Check poetry installation: `poetry --version`
 
+## Install Git and clone repository
 - Install and setup Git:
     - Install git: `sudo apt-get install git`
     - Configure git: `git config --global user.name "Your Name"` and `git config --global user.email youremail@example.com`
@@ -145,24 +149,14 @@ rm -f ~/anaconda.sh
     - Go to GitHub settings > SSH and GPG keys > New SSH key
     - Paste the public SSH key and save
     - Test the SSH connection: `ssh -T git@github.com`
-- Clone the repository: `git clone git@github.com:alexquant1993/real_estate_spain.git`
-- Create a conda environment and install the neccesary packages:
-```bash
-conda create -n re-spain python=3.11
-conda init bash
-# Close and reopen your terminal
-conda activate re-spain
-cd real_estate_spain
-pip install -r requirements.txt
-# Downgrade pydantic to make it compatible with prefect
-pip install pydantic==1.10.11
-```
-- Set the PYTHONPATH environment variable to include our working directory, in the .bashrc file:
-```bash
-nano ~/.bashrc
-export PYTHONPATH="${PYTHONPATH}:/home/aarroyo/real_estate_spain"
-source ~/.bashrc
-```
+- Clone the repository: `git clone git@github.com:alexquant1993/re_data_engineering.git`
+
+## Use poetry to install packages
+- Move to the project directory: `cd re_data_engineering`
+- Install the packages: `poetry install`
+- Activate the virtual environment: `poetry shell`
+- Check the packages installed: `poetry show`
+
 
 ## Prefect setup
 1. Run prefect as a (systemd service)[https://docs.prefect.io/orchestration/tutorial/overview.html#running-prefect-as-a-systemd-service].
