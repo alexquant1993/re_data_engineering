@@ -23,6 +23,7 @@ latest-user-agents = "0.0.3"
 httpagentparser = "1.9.5"
 pydantic = "1.10.11"
 anyio = "3.7.1"
+pendulum = "2.1.2"
 
 
 [build-system]

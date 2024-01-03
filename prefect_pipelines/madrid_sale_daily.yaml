@@ -32,15 +32,18 @@ tags:
 - sale
 parameters:
   zone: madrid
-  testing: true
+  testing: false
   province: madrid
   dataset_id: idealista_listings
   bucket_name: idealista_data_lake_idealista-scraper-384619
   time_period: 24
   type_search: sale
   credentials_path: ~/.gcp/prefect-agent.json
-schedule: null
-is_schedule_active: null
+schedule:
+  cron: 0 7 * * *
+  timezone: Europe/Madrid
+  day_or: true
+is_schedule_active: true
 infra_overrides: {}
 infrastructure:
   type: process
@@ -131,4 +134,4 @@ parameter_openapi_schema:
   - dataset_id
   - credentials_path
   definitions: null
-timestamp: '2024-01-02T17:20:46.950208+00:00'
+timestamp: '2024-01-03T08:45:35.076395+00:00'
